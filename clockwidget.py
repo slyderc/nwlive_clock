@@ -405,18 +405,18 @@ class ClockWidget(QtWidgets.QWidget):
             dot_offset = 3.5
 
             # HH:MM:SS centered around 0 (original positions)
-            self.draw_digit(painter, digit_spacing * -3, 0, int(hour_str[0:1]), dot_size, dot_offset)
-            self.draw_digit(painter, digit_spacing * -2, 0, int(hour_str[1:2]), dot_size, dot_offset)
+            self._draw_digit_with_ghost(painter, digit_spacing * -3, 0, int(hour_str[0:1]), dot_size, dot_offset)
+            self._draw_digit_with_ghost(painter, digit_spacing * -2, 0, int(hour_str[1:2]), dot_size, dot_offset)
 
             self.draw_colon(painter, digit_spacing * -1.25, 0, dot_size, dot_offset)
 
-            self.draw_digit(painter, digit_spacing * -0.5, 0, int(minute_str[0:1]), dot_size, dot_offset)
-            self.draw_digit(painter, digit_spacing * 0.5, 0, int(minute_str[1:2]), dot_size, dot_offset)
+            self._draw_digit_with_ghost(painter, digit_spacing * -0.5, 0, int(minute_str[0:1]), dot_size, dot_offset)
+            self._draw_digit_with_ghost(painter, digit_spacing * 0.5, 0, int(minute_str[1:2]), dot_size, dot_offset)
 
             self.draw_colon(painter, digit_spacing * 1.25, 0, dot_size, dot_offset)
 
-            self.draw_digit(painter, digit_spacing * 2, 0, int(second_str[0:1]), dot_size, dot_offset)
-            self.draw_digit(painter, digit_spacing * 3, 0, int(second_str[1:2]), dot_size, dot_offset)
+            self._draw_digit_with_ghost(painter, digit_spacing * 2, 0, int(second_str[0:1]), dot_size, dot_offset)
+            self._draw_digit_with_ghost(painter, digit_spacing * 3, 0, int(second_str[1:2]), dot_size, dot_offset)
 
         else:
             # Standard HH:MM mode with optional seconds below
@@ -425,20 +425,20 @@ class ClockWidget(QtWidgets.QWidget):
             seconds_offset_x = -3.5  # Original offset for seconds
 
             # Digits at: -56, -28, colon at 0, +28, +56 (original symmetric positions)
-            self.draw_digit(painter, digit_spacing * -2, 0, int(hour_str[0:1]))
-            self.draw_digit(painter, digit_spacing * -1, 0, int(hour_str[1:2]))
+            self._draw_digit_with_ghost(painter, digit_spacing * -2, 0, int(hour_str[0:1]))
+            self._draw_digit_with_ghost(painter, digit_spacing * -1, 0, int(hour_str[1:2]))
 
             self.draw_colon(painter, 0, 0)
 
             minute_str = "%02d" % time.minute()
-            self.draw_digit(painter, digit_spacing * 1, 0, int(minute_str[0:1]))
-            self.draw_digit(painter, digit_spacing * 2, 0, int(minute_str[1:2]))
+            self._draw_digit_with_ghost(painter, digit_spacing * 1, 0, int(minute_str[0:1]))
+            self._draw_digit_with_ghost(painter, digit_spacing * 2, 0, int(minute_str[1:2]))
 
             if self.showSeconds:
                 second_str = "%02d" % time.second()
-                self.draw_digit(painter, (digit_spacing * -0.3) + seconds_offset_x, digit_spacing_y,
+                self._draw_digit_with_ghost(painter, (digit_spacing * -0.3) + seconds_offset_x, digit_spacing_y,
                                 int(second_str[0:1]), 0.8, 3)
-                self.draw_digit(painter, (digit_spacing * 0.3) + seconds_offset_x, digit_spacing_y,
+                self._draw_digit_with_ghost(painter, (digit_spacing * 0.3) + seconds_offset_x, digit_spacing_y,
                                 int(second_str[1:2]), 0.8, 3)
 
         dot_size = 1.6
@@ -518,6 +518,23 @@ class ClockWidget(QtWidgets.QWidget):
             painter.drawEllipse(
                 QtCore.QPointF(digit_start_pos_x + (dot_slant * 2 * current_row),
                                digit_start_pos_y - (dot_offset * current_row)), dot_size, dot_size)
+
+    def _draw_digit_with_ghost(self, painter, x, y, value, dot_size=1.6, dot_offset=5.0, slant=19.0):
+        """Draw digit with ghost (unlit) segments visible for visual balance."""
+        # AIDEV-TODO: Add self.showGhostSegments toggle controlled by settings
+
+        # Draw ghost segments first (digit "8" = all segments)
+        ghost_color = QtGui.QColor(self.digiDigitColor)
+        ghost_color.setAlpha(int(self.digiDigitColor.alpha() * 0.12))
+
+        painter.save()
+        painter.setBrush(ghost_color)
+        painter.setPen(ghost_color)
+        self.draw_digit(painter, x, y, 8, dot_size, dot_offset, slant)
+        painter.restore()
+
+        # Draw lit segments on top
+        self.draw_digit(painter, x, y, value, dot_size, dot_offset, slant)
 
     @staticmethod
     def draw_digit(painter, digit_start_pos_x=0.0, digit_start_pos_y=0.0, value=8, dot_size=1.6, dot_offset=5.0,
