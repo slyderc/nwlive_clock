@@ -102,6 +102,11 @@ DEFAULT_TIMER_AIR_ICON_PATHS: Dict[int, str] = {
     4: ":/stream_icon/images/antenna2.png"
 }
 
+# AIR3 countdown timer dynamic colors
+DEFAULT_AIR3_COUNTDOWN_GREEN: str = "#21452C"   # > 15 seconds remaining
+DEFAULT_AIR3_COUNTDOWN_YELLOW: str = "#EC7C09"  # > 5 seconds remaining (6-15s)
+DEFAULT_AIR3_COUNTDOWN_RED: str = "#EA353D"     # <= 5 seconds remaining
+
 # Network Settings
 DEFAULT_UDP_PORT: int = 3310
 DEFAULT_HTTP_PORT: int = 8010

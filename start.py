@@ -289,7 +289,7 @@ class MainScreen(QWidget, Ui_MainScreen):
     def radio_timer_set(self, seconds: int) -> None:
         """
         Set radio timer duration in seconds
-        
+
         Args:
             seconds: Timer duration in seconds (0 for count-up mode, >0 for count-down mode)
         """
@@ -297,11 +297,13 @@ class MainScreen(QWidget, Ui_MainScreen):
         if seconds > 0:
             self.radioTimerMode = 1  # count down mode
             mode = "count_down"
+            # AIDEV-NOTE: Set initial countdown color based on timer duration
+            self._update_air3_countdown_color(seconds)
         else:
             self.radioTimerMode = 0  # count up mode
             mode = "count_up"
         self.AirLabel_3.setText(f"Timer\n{int(self.Air3Seconds / 60)}:{int(self.Air3Seconds % 60):02d}")
-        
+
         # Log timer set event
         self.event_logger.log_timer_set(3, seconds, mode)
 
@@ -548,6 +550,36 @@ class MainScreen(QWidget, Ui_MainScreen):
             label_text = settings.value(config['label'], config['label_default'])
             seconds = getattr(self, seconds_attr)
             label_widget.setText(f"{label_text}\n{int(seconds/60)}:{seconds%60:02d}")
+
+        # AIDEV-NOTE: Update AIR3 countdown color based on remaining time
+        if air_num == 3 and 'mode_attr' in config:
+            mode = getattr(self, config['mode_attr'], 0)
+            if mode == 1:  # countdown mode
+                self._update_air3_countdown_color(getattr(self, seconds_attr))
+
+    def _update_air3_countdown_color(self, remaining_seconds: int) -> None:
+        """
+        Update AIR3 background color based on remaining countdown time
+
+        Colors:
+        - Green (#21452C): > 15 seconds remaining
+        - Yellow (#EC7C09): > 5 seconds remaining (6-15s)
+        - Red (#EA353D): <= 5 seconds remaining
+
+        Args:
+            remaining_seconds: Seconds remaining in countdown
+        """
+        if remaining_seconds > 15:
+            bg_color = DEFAULT_AIR3_COUNTDOWN_GREEN
+        elif remaining_seconds > 5:
+            bg_color = DEFAULT_AIR3_COUNTDOWN_YELLOW
+        else:
+            bg_color = DEFAULT_AIR3_COUNTDOWN_RED
+
+        text_color = "#FFFFFF"  # Keep white text for visibility
+        stylesheet = f"color:{text_color};background-color:{bg_color}"
+        self.AirLabel_3.setStyleSheet(stylesheet)
+        self.AirIcon_3.setStyleSheet(stylesheet)
 
     def show_settings(self) -> None:
         """

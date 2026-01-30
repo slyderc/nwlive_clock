@@ -70,7 +70,8 @@ Separate modules handle distinct concerns:
 | Port | Protocol | Purpose |
 |------|----------|---------|
 | 3310 | UDP | Command reception (multicast: 239.194.0.1) |
-| 8010 | HTTP | REST API, Web UI, WebSocket (/ws) |
+| 8010 | HTTP | REST API, Web UI |
+| 8011 | WebSocket | Real-time status broadcast (HTTP port + 1) |
 
 ### API Command Format
 ```
