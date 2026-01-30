@@ -326,23 +326,45 @@ class TestAir3Command:
 
 class TestAir3TimeCommand:
     """Test AIR3TIME command handler"""
-    
+
     def test_air3time_valid(self, command_handler, mock_main_screen):
         """Test AIR3TIME command with valid value"""
         command_handler.parse_cmd(b"AIR3TIME:125")
         mock_main_screen.radio_timer_set.assert_called_once_with(125)
-    
+
     def test_air3time_zero(self, command_handler, mock_main_screen):
         """Test AIR3TIME command with zero"""
         command_handler.parse_cmd(b"AIR3TIME:0")
         mock_main_screen.radio_timer_set.assert_called_once_with(0)
-    
+
     def test_air3time_invalid(self, command_handler, mock_main_screen):
         """Test AIR3TIME command with invalid value"""
         with patch('command_handler.logger') as mock_logger:
             command_handler.parse_cmd(b"AIR3TIME:invalid")
             mock_logger.error.assert_called_once()
             # radio_timer_set should not be called with invalid value
+            mock_main_screen.radio_timer_set.assert_not_called()
+
+    def test_air3time_fractional_rounds_down(self, command_handler, mock_main_screen):
+        """Test AIR3TIME rounds fractional seconds down when < 0.5"""
+        command_handler.parse_cmd(b"AIR3TIME:312.38")
+        mock_main_screen.radio_timer_set.assert_called_once_with(312)
+
+    def test_air3time_fractional_rounds_up(self, command_handler, mock_main_screen):
+        """Test AIR3TIME rounds fractional seconds up when >= 0.5"""
+        command_handler.parse_cmd(b"AIR3TIME:312.78")
+        mock_main_screen.radio_timer_set.assert_called_once_with(313)
+
+    def test_air3time_fractional_at_boundary(self, command_handler, mock_main_screen):
+        """Test AIR3TIME with fractional value that rounds to max boundary"""
+        command_handler.parse_cmd(b"AIR3TIME:86400.4")
+        mock_main_screen.radio_timer_set.assert_called_once_with(86400)
+
+    def test_air3time_fractional_exceeds_boundary(self, command_handler, mock_main_screen):
+        """Test AIR3TIME with fractional value that rounds above max boundary"""
+        with patch('command_handler.logger') as mock_logger:
+            command_handler.parse_cmd(b"AIR3TIME:86400.6")
+            mock_logger.error.assert_called_once()
             mock_main_screen.radio_timer_set.assert_not_called()
 
 
@@ -737,7 +759,15 @@ class TestInputValidation:
         assert validate_air3time_value("60") is True
         assert validate_air3time_value("3600") is True
         assert validate_air3time_value("86400") is True  # 24 hours
-    
+
+    def test_validate_air3time_value_fractional(self):
+        """Test validate_air3time_value accepts fractional values"""
+        assert validate_air3time_value("312.38") is True
+        assert validate_air3time_value("60.5") is True
+        assert validate_air3time_value("86400.4") is True   # Rounds to 86400
+        assert validate_air3time_value("86400.5") is True   # Rounds to 86400 (banker's rounding to even)
+        assert validate_air3time_value("86400.6") is False  # Rounds to 86401
+
     def test_validate_air3time_value_invalid(self):
         """Test validate_air3time_value with invalid values"""
         assert validate_air3time_value("-1") is False

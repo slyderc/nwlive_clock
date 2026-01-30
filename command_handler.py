@@ -50,6 +50,7 @@ from exceptions import (
     InvalidCommandFormatError, EncodingError, TextValidationError,
     log_exception
 )
+from utils import parse_seconds_value
 
 if TYPE_CHECKING:
     from start import MainScreen
@@ -188,16 +189,16 @@ def validate_air_value(value: str, air_num: int) -> bool:
 
 def validate_air3time_value(value: str) -> bool:
     """
-    Validate AIR3TIME command value (must be a valid integer)
-    
+    Validate AIR3TIME command value (accepts integers or fractional seconds)
+
     Args:
-        value: Timer duration as string
-        
+        value: Timer duration as string (e.g., "312", "312.38")
+
     Returns:
-        True if value is valid integer, False otherwise
+        True if value is valid numeric and rounds to 0-86400, False otherwise
     """
     try:
-        int_value = int(value)
+        int_value = parse_seconds_value(value)
         # Reasonable range: 0 to 24 hours (86400 seconds)
         return 0 <= int_value <= 86400
     except (ValueError, OverflowError):
@@ -436,19 +437,20 @@ class CommandHandler:
     def _handle_air3time_command(self, value: str) -> None:
         """
         Handle AIR3TIME command to set radio timer duration
-        
+
         Args:
-            value: Timer duration in seconds as string
-            
+            value: Timer duration in seconds as string (supports fractional, e.g., "312.38")
+
         Note:
-            Validates that value is a valid integer in range 0-86400 (24 hours)
+            Validates that value is a valid number in range 0-86400 (24 hours).
+            Fractional seconds are rounded to the nearest whole second.
         """
         if not validate_air3time_value(value):
-            logger.error(f"Invalid AIR3TIME value: '{value}', must be integer between 0 and 86400")
+            logger.error(f"Invalid AIR3TIME value: '{value}', must be numeric between 0 and 86400")
             return
-        
+
         try:
-            self.main_screen.radio_timer_set(int(value))
+            self.main_screen.radio_timer_set(parse_seconds_value(value))
         except (ValueError, OverflowError) as e:
             error = CommandValidationError(
                 f"ERROR: invalid AIR3TIME value: {e}",
