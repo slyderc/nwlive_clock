@@ -399,37 +399,40 @@ class ClockWidget(QtWidgets.QWidget):
         second_str = "%02d" % time.second()
 
         if self.one_line_time:
+            # One-line HH:MM:SS mode with smaller digits
             digit_spacing = 20
             dot_size = 1
             dot_offset = 3.5
 
-            # HH:MM:SS centered around 0
-            self.draw_digit(painter, digit_spacing * -2.75, 0, int(hour_str[0:1]), dot_size, dot_offset)
-            self.draw_digit(painter, digit_spacing * -1.75, 0, int(hour_str[1:2]), dot_size, dot_offset)
+            # HH:MM:SS centered around 0 (original positions)
+            self.draw_digit(painter, digit_spacing * -3, 0, int(hour_str[0:1]), dot_size, dot_offset)
+            self.draw_digit(painter, digit_spacing * -2, 0, int(hour_str[1:2]), dot_size, dot_offset)
 
-            self.draw_colon(painter, digit_spacing * -1.0, 0, dot_size, dot_offset)
+            self.draw_colon(painter, digit_spacing * -1.25, 0, dot_size, dot_offset)
 
-            self.draw_digit(painter, digit_spacing * -0.25, 0, int(minute_str[0:1]), dot_size, dot_offset)
-            self.draw_digit(painter, digit_spacing * 0.75, 0, int(minute_str[1:2]), dot_size, dot_offset)
+            self.draw_digit(painter, digit_spacing * -0.5, 0, int(minute_str[0:1]), dot_size, dot_offset)
+            self.draw_digit(painter, digit_spacing * 0.5, 0, int(minute_str[1:2]), dot_size, dot_offset)
 
-            self.draw_colon(painter, digit_spacing * 1.5, 0, dot_size, dot_offset)
+            self.draw_colon(painter, digit_spacing * 1.25, 0, dot_size, dot_offset)
 
-            self.draw_digit(painter, digit_spacing * 2.25, 0, int(second_str[0:1]), dot_size, dot_offset)
-            self.draw_digit(painter, digit_spacing * 3.25, 0, int(second_str[1:2]), dot_size, dot_offset)
+            self.draw_digit(painter, digit_spacing * 2, 0, int(second_str[0:1]), dot_size, dot_offset)
+            self.draw_digit(painter, digit_spacing * 3, 0, int(second_str[1:2]), dot_size, dot_offset)
 
         else:
+            # Standard HH:MM mode with optional seconds below
             digit_spacing = 28
             digit_spacing_y = 45
-            seconds_offset_x = 0  # Was -3.5, reset to center
+            seconds_offset_x = -3.5  # Original offset for seconds
 
-            self.draw_digit(painter, digit_spacing * -1.5, 0, int(hour_str[0:1]))
-            self.draw_digit(painter, digit_spacing * -0.5, 0, int(hour_str[1:2]))
+            # Digits at: -56, -28, colon at 0, +28, +56 (original symmetric positions)
+            self.draw_digit(painter, digit_spacing * -2, 0, int(hour_str[0:1]))
+            self.draw_digit(painter, digit_spacing * -1, 0, int(hour_str[1:2]))
 
             self.draw_colon(painter, 0, 0)
 
             minute_str = "%02d" % time.minute()
-            self.draw_digit(painter, digit_spacing * 0.5, 0, int(minute_str[0:1]))
-            self.draw_digit(painter, digit_spacing * 1.5, 0, int(minute_str[1:2]))
+            self.draw_digit(painter, digit_spacing * 1, 0, int(minute_str[0:1]))
+            self.draw_digit(painter, digit_spacing * 2, 0, int(minute_str[1:2]))
 
             if self.showSeconds:
                 second_str = "%02d" % time.second()
