@@ -1,0 +1,17 @@
+mainscreen.py
+settings.py
+resources_rc.py
+*.pyc
+*.pyo
+onairscreen.ini
+.DS_Store
+venv/
+dist/
+build/
+.idea/
+distribution.py
+*.build
+*.dist
+.vscode/
+IMPROVEMENTS.md
+DOKUWIKI/

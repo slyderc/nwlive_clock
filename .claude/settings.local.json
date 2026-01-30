@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git log:*)",
+      "Bash(make:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)"
+    ]
+  }
+}
