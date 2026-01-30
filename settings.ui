@@ -1514,6 +1514,89 @@
              </item>
             </layout>
            </item>
+           <item>
+            <layout class="QFormLayout" name="formLayout_streammonitor">
+             <property name="labelAlignment">
+              <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+             </property>
+             <property name="formAlignment">
+              <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+             </property>
+             <item row="0" column="0">
+              <widget class="QCheckBox" name="streamMonitorEnabled">
+               <property name="text">
+                <string>enable Stream Monitor</string>
+               </property>
+               <property name="checked">
+                <bool>false</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_streammonitor_url">
+               <property name="text">
+                <string>Stream URL</string>
+               </property>
+               <property name="buddy">
+                <cstring>streamMonitorUrl</cstring>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLineEdit" name="streamMonitorUrl">
+               <property name="placeholderText">
+                <string>http://stream.example.com/play.m3u</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_streammonitor_poll">
+               <property name="text">
+                <string>Poll Interval (sec)</string>
+               </property>
+               <property name="buddy">
+                <cstring>streamMonitorPollInterval</cstring>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QSpinBox" name="streamMonitorPollInterval">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>60</number>
+               </property>
+               <property name="value">
+                <number>3</number>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_streammonitor_threshold">
+               <property name="text">
+                <string>Offline Threshold (sec)</string>
+               </property>
+               <property name="buddy">
+                <cstring>streamMonitorOfflineThreshold</cstring>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QSpinBox" name="streamMonitorOfflineThreshold">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>300</number>
+               </property>
+               <property name="value">
+                <number>10</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
           </layout>
          </item>
          <item>

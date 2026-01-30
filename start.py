@@ -57,6 +57,7 @@ from warning_manager import WarningManager
 from settings_functions import SettingsRestorer
 from timer_input import TimerInputDialog
 from ntp_manager import NTPManager
+from stream_monitor import StreamMonitor
 from font_loader import load_fonts
 from signal_handlers import setup_signal_handlers
 from system_operations import SystemOperations
@@ -203,6 +204,9 @@ class MainScreen(QWidget, Ui_MainScreen):
         # Initialize NTP manager
         self.ntp_manager = NTPManager(self)
 
+        # Initialize stream monitor for automatic AIR4 control
+        self.stream_monitor = StreamMonitor(self)
+
         self.replacenowTimer = QTimer()
         self.replacenowTimer.timeout.connect(self.replace_now_next)
 
@@ -241,18 +245,33 @@ class MainScreen(QWidget, Ui_MainScreen):
 
         # NTP warning is already initialized in NTPManager
 
-        # Auto-start Stream timer (AIR4) on launch
-        self.start_air4()
+        # Auto-start Stream timer (AIR4) on launch only if stream monitoring is disabled
+        # When stream monitoring is enabled, StreamMonitor will control AIR4 automatically
+        if not self._is_stream_monitoring_active():
+            self.start_air4()
+
+    def _is_stream_monitoring_active(self) -> bool:
+        """
+        Check if stream monitoring is active
+
+        Returns:
+            True if stream monitor is enabled and running, False otherwise
+        """
+        return (hasattr(self, 'stream_monitor') and
+                self.stream_monitor is not None and
+                self.stream_monitor.is_enabled())
 
     def quit_oas(self) -> None:
         """
         Quit the application with cleanup
-        
+
         Stops NTP check thread, HTTP server, and quits the application.
         """
         logger.info("Quitting, cleaning up...")
         self.event_logger.log_system_event("Application quit")
         self.ntp_manager.stop()
+        if hasattr(self, 'stream_monitor') and self.stream_monitor:
+            self.stream_monitor.stop()
         self.httpd.stop()
         if hasattr(self, 'wsd') and self.wsd:
             self.wsd.stop()
@@ -1061,6 +1080,10 @@ class MainScreen(QWidget, Ui_MainScreen):
 
     def start_stop_air4(self) -> None:
         """Toggle AIR4 start/stop"""
+        # Block manual toggle when stream monitoring is active
+        if self._is_stream_monitoring_active():
+            logger.debug("AIR4 toggle ignored - stream monitoring active")
+            return
         self._start_stop_air(4)
 
     def start_air4(self) -> None:
@@ -1386,6 +1409,11 @@ class MainScreen(QWidget, Ui_MainScreen):
             logger.debug("Settings applied, restarting MQTT client to apply any changes...")
             self.mqtt_client.restart()
 
+        # Restart stream monitor when settings are applied
+        if hasattr(self, 'stream_monitor') and self.stream_monitor:
+            logger.debug("Settings applied, restarting stream monitor to apply any changes...")
+            self.stream_monitor.restart()
+
     def reboot_host(self):
         """Reboot the host system safely using subprocess"""
         self.system_operations.reboot_host()
@@ -1435,6 +1463,17 @@ class MainScreen(QWidget, Ui_MainScreen):
                 error = NetworkError(f"Error stopping WebSocket daemon: {e}")
                 log_exception(logger, error)
         
+        try:
+            if hasattr(self, 'stream_monitor') and self.stream_monitor:
+                self.stream_monitor.stop()
+        except Exception as e:
+            from exceptions import OnAirScreenError, NetworkError
+            if isinstance(e, OnAirScreenError):
+                log_exception(logger, e)
+            else:
+                error = NetworkError(f"Error stopping stream monitor: {e}")
+                log_exception(logger, error)
+
         try:
             if hasattr(self, 'ntp_manager') and self.ntp_manager:
                 self.ntp_manager.stop()

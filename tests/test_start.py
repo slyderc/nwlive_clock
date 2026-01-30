@@ -41,7 +41,10 @@ def mock_main_screen():
             screen.reboot_host = Mock()
             screen.shutdown_host = Mock()
             screen.quit_oas = Mock()
-            
+
+            # Mock stream monitoring check (default: not active, so AIR4 commands work normally)
+            screen._is_stream_monitoring_active = Mock(return_value=False)
+
             # Mock settings object
             screen.settings = MagicMock()
             screen.settings.StationName = MagicMock()

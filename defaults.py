@@ -139,6 +139,12 @@ DEFAULT_WEATHER_CITY_ID: str = "5809844"  # Seattle, Washington, USA
 DEFAULT_WEATHER_LANGUAGE: str = "English"  # Display name, not language code
 DEFAULT_WEATHER_UNIT: str = "Fahrenheit"  # Display name, not unit code
 
+# Stream Monitor Settings
+DEFAULT_STREAM_MONITOR_ENABLED: bool = True
+DEFAULT_STREAM_MONITOR_URL: str = "http://zipstream.climate.local/play.m3u"
+DEFAULT_STREAM_MONITOR_POLL_INTERVAL: int = 3  # Seconds between checks
+DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD: int = 10  # Seconds offline before stopping AIR4
+
 # Helper function to get default value by key path
 def get_default(group: str, key: str, default: Any = None) -> Any:
     """
@@ -268,7 +274,17 @@ def get_default(group: str, key: str, default: Any = None) -> Any:
             "owmUnit": DEFAULT_WEATHER_UNIT,
         }
         return defaults.get(key, default)
-    
+
+    # StreamMonitoring group
+    if group == "StreamMonitoring":
+        defaults = {
+            "streamMonitorEnabled": DEFAULT_STREAM_MONITOR_ENABLED,
+            "streamMonitorUrl": DEFAULT_STREAM_MONITOR_URL,
+            "streamMonitorPollInterval": DEFAULT_STREAM_MONITOR_POLL_INTERVAL,
+            "streamMonitorOfflineThreshold": DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD,
+        }
+        return defaults.get(key, default)
+
     # Fonts group
     if group == "Fonts":
         if key.endswith("FontName"):

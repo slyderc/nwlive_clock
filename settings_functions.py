@@ -292,6 +292,9 @@ class Settings(QWidget, Ui_Settings):
         # MQTT checkbox connection
         self.enablemqtt.toggled.connect(self._on_mqtt_enabled_changed)
 
+        # Stream Monitor checkbox connection
+        self.streamMonitorEnabled.toggled.connect(self._on_stream_monitor_enabled_changed)
+
         self.SetFont_LED1.clicked.connect(self.setOASFontLED1)
         self.SetFont_LED2.clicked.connect(self.setOASFontLED2)
         self.SetFont_LED3.clicked.connect(self.setOASFontLED3)
@@ -369,7 +372,8 @@ class Settings(QWidget, Ui_Settings):
         # List of all configuration groups
         groups = [
             "General", "NTP", "LEDS", "LED1", "LED2", "LED3", "LED4",
-            "Clock", "Network", "Formatting", "WeatherWidget", "Timers", "Fonts"
+            "Clock", "Network", "MQTT", "StreamMonitoring", "Formatting",
+            "WeatherWidget", "Timers", "Fonts"
         ]
         
         for group in groups:
@@ -720,6 +724,16 @@ class Settings(QWidget, Ui_Settings):
             self.mqttpassword.setEnabled(self.enablemqtt.isChecked())
             self.mqttdevicename.setEnabled(self.enablemqtt.isChecked())
 
+        with settings_group(settings, "StreamMonitoring"):
+            self.streamMonitorEnabled.setChecked(settings.value('streamMonitorEnabled', DEFAULT_STREAM_MONITOR_ENABLED, type=bool))
+            self.streamMonitorUrl.setText(settings.value('streamMonitorUrl', DEFAULT_STREAM_MONITOR_URL, type=str))
+            self.streamMonitorPollInterval.setValue(settings.value('streamMonitorPollInterval', DEFAULT_STREAM_MONITOR_POLL_INTERVAL, type=int))
+            self.streamMonitorOfflineThreshold.setValue(settings.value('streamMonitorOfflineThreshold', DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD, type=int))
+            # Enable/disable fields based on checkbox
+            self.streamMonitorUrl.setEnabled(self.streamMonitorEnabled.isChecked())
+            self.streamMonitorPollInterval.setEnabled(self.streamMonitorEnabled.isChecked())
+            self.streamMonitorOfflineThreshold.setEnabled(self.streamMonitorEnabled.isChecked())
+
         with settings_group(settings, "Formatting"):
             self.dateFormat.setText(settings.value('dateFormat', DEFAULT_DATE_FORMAT))
             self.textClockLanguage.setCurrentIndex(
@@ -898,6 +912,12 @@ class Settings(QWidget, Ui_Settings):
             settings.setValue('mqttuser', self.mqttuser.displayText())
             settings.setValue('mqttpassword', self.mqttpassword.displayText())
             settings.setValue('mqttdevicename', self.mqttdevicename.displayText())
+
+        with settings_group(settings, "StreamMonitoring"):
+            settings.setValue('streamMonitorEnabled', self.streamMonitorEnabled.isChecked())
+            settings.setValue('streamMonitorUrl', self.streamMonitorUrl.text())
+            settings.setValue('streamMonitorPollInterval', self.streamMonitorPollInterval.value())
+            settings.setValue('streamMonitorOfflineThreshold', self.streamMonitorOfflineThreshold.value())
 
         with settings_group(settings, "Formatting"):
             settings.setValue('dateFormat', self.dateFormat.displayText())
@@ -1539,7 +1559,13 @@ class Settings(QWidget, Ui_Settings):
         self.mqttuser.setEnabled(enabled)
         self.mqttpassword.setEnabled(enabled)
         self.mqttdevicename.setEnabled(enabled)
-        
+
+    def _on_stream_monitor_enabled_changed(self, enabled: bool) -> None:
+        """Handle stream monitor enabled checkbox state change"""
+        self.streamMonitorUrl.setEnabled(enabled)
+        self.streamMonitorPollInterval.setEnabled(enabled)
+        self.streamMonitorOfflineThreshold.setEnabled(enabled)
+
         # Timer/AIR settings
         for air_num in range(1, 5):
             getattr(self, f'enableAIR{air_num}').setToolTip(f"Enable or disable AIR{air_num} timer display")

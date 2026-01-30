@@ -100,7 +100,10 @@ def mock_main_screen():
         setattr(main_screen.settings, f"setAIR{air_num}BGColor", Mock())
         setattr(main_screen.settings, f"setAIR{air_num}FGColor", Mock())
         setattr(main_screen.settings, f"setAIR{air_num}IconPath", Mock())
-    
+
+    # Mock stream monitoring check (default: not active, so AIR4 commands work normally)
+    main_screen._is_stream_monitoring_active = Mock(return_value=False)
+
     return main_screen
 
 

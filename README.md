@@ -35,6 +35,7 @@ Multi purpose "OnAir Lamp" solution targeted for use in professional broadcast e
  * Web-UI: Improved compact layout for better space efficiency
  * REST-style API endpoints (/api/status, /api/command)
  * MQTT integration with Home Assistant Autodiscovery support
+ * Automatic Stream Monitoring for AIR4 (STREAM) widget with Icecast support
  * Event logging system for tracking all actions
  * Configurable log level settings (DEBUG, INFO, WARNING, ERROR, CRITICAL, NONE)
  * Command-line option to override log level (--loglevel)
@@ -170,6 +171,33 @@ mosquitto_pub -h mqtt-broker -t onairscreen_a1b2c3/air3/set -m "ON"
 mosquitto_pub -h mqtt-broker -t onairscreen_a1b2c3/air3/reset -m "PRESS"
 mosquitto_pub -h mqtt-broker -t onairscreen_a1b2c3/text/now/set -m "Current Song"
 ```
+
+##### Stream Monitoring (AIR4)
+
+OnAirScreen can automatically monitor an Icecast stream and control the AIR4 (STREAM) timer based on stream availability. This is useful for displaying how long your stream has been live.
+
+**Configuration:**
+Configure Stream Monitoring in Settings → Advanced Settings:
+- **Enable Stream Monitor**: Turn automatic monitoring on/off
+- **Stream URL**: Your Icecast stream URL (supports `.m3u` playlists or direct stream URLs)
+- **Poll Interval**: How often to check the stream (default: 3 seconds)
+- **Offline Threshold**: How long the stream must be offline before stopping AIR4 (default: 10 seconds)
+
+**Behavior:**
+- When the stream comes online → AIR4 automatically starts with timer reset to `00:00:00:00`
+- When the stream goes offline (exceeds threshold) → AIR4 automatically stops
+- Brief interruptions (less than threshold) → AIR4 stays on
+- Manual AIR4 control (ON/OFF/TOGGLE) is blocked when monitoring is active
+- AIR4 RESET is still allowed (useful for resetting the timer while the stream is live)
+
+**Example:**
+```
+Stream URL: http://your-icecast-server.com/stream.m3u
+Poll Interval: 3 seconds
+Offline Threshold: 10 seconds
+```
+
+The monitor will parse `.m3u` playlists to extract the actual stream URL, then periodically check if the stream is delivering audio data.
 
 ##### API Commands
 

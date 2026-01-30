@@ -462,15 +462,26 @@ class CommandHandler:
     def _handle_air4_command(self, value: str) -> None:
         """
         Handle AIR4 command
-        
+
         Args:
             value: Command action ("OFF", "ON", "RESET", or "TOGGLE")
+
+        Note:
+            When stream monitoring is active, ON/OFF/TOGGLE commands are ignored.
+            RESET is still allowed (user may want to reset timer while stream is live).
         """
         if not validate_air_value(value, 4):
             logger.warning(f"Invalid AIR4 command value: '{value}', expected 'ON', 'OFF', 'RESET', or 'TOGGLE'")
             return
-        
+
         value_upper = value.upper()
+
+        # Block ON/OFF/TOGGLE when stream monitoring is active (RESET is allowed)
+        if value_upper in ("ON", "OFF", "TOGGLE"):
+            if self.main_screen._is_stream_monitoring_active():
+                logger.debug(f"AIR4 {value_upper} command ignored - stream monitoring active")
+                return
+
         if value_upper == "OFF":
             self.main_screen.set_air4(False)
         elif value_upper == "ON":
