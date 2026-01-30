@@ -121,6 +121,7 @@ class ClockWidget(QtWidgets.QWidget):
         self.counter = 0
         self.one_line_time = False
         self.logo_upper = False
+        self.showTOH = False  # Top Of Hour count-up timer
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
@@ -215,6 +216,19 @@ class ClockWidget(QtWidgets.QWidget):
         return self.staticColon
 
     clockStaticColon = QtCore.pyqtProperty("int", get_static_colon, set_static_colon, reset_static_colon)
+
+    @QtCore.pyqtSlot(bool)
+    def set_show_toh(self, value):
+        """Enable/disable Top Of Hour count-up timer (MM:SS since top of hour)."""
+        self.showTOH = value
+
+    def reset_show_toh(self):
+        self.showTOH = False
+
+    def get_show_toh(self):
+        return self.showTOH
+
+    clockShowTOH = QtCore.pyqtProperty("int", get_show_toh, set_show_toh, reset_show_toh)
 
     @QtCore.pyqtSlot(QtGui.QColor)
     def set_digi_hour_color(self, color=QtGui.QColor(50, 50, 255, 255)):
@@ -441,6 +455,36 @@ class ClockWidget(QtWidgets.QWidget):
                 self._draw_digit_with_ghost(painter, (digit_spacing * 0.3) + seconds_offset_x, digit_spacing_y,
                                 int(second_str[1:2]), 0.8, 3)
 
+        # TOH count-down timer (MM:SS remaining until next hour)
+        if self.showTOH and not self.one_line_time:
+            # Calculate time remaining: 59:59 at :00:00, counts down to 00:00 at :59:59
+            remaining_seconds = 3599 - (time.minute() * 60 + time.second())
+            toh_minutes = remaining_seconds // 60
+            toh_seconds = remaining_seconds % 60
+            toh_min_str = "%02d" % toh_minutes
+            toh_sec_str = "%02d" % toh_seconds
+
+            # Styling: 50% of main digits (main: dot_size=1.6, dot_offset=5.0, spacing=28)
+            toh_dot_size = 0.8      # 1.6 * 0.5
+            toh_dot_offset = 2.5    # 5.0 * 0.5
+            toh_spacing = 14        # 28 * 0.5
+            # Position: centered between bottom of main digits (~Y=22) and ring (~Y=88)
+            toh_y = 55
+
+            # Draw MM:SS centered at x=0
+            self._draw_digit_with_ghost(painter, toh_spacing * -1.5, toh_y,
+                                        int(toh_min_str[0]), toh_dot_size, toh_dot_offset)
+            self._draw_digit_with_ghost(painter, toh_spacing * -0.5, toh_y,
+                                        int(toh_min_str[1]), toh_dot_size, toh_dot_offset)
+
+            self.draw_colon(painter, toh_spacing * 0.25, toh_y, toh_dot_size, toh_dot_offset * 0.9,
+                            force_static=True)  # TOH colon always visible
+
+            self._draw_digit_with_ghost(painter, toh_spacing * 1, toh_y,
+                                        int(toh_sec_str[0]), toh_dot_size, toh_dot_offset)
+            self._draw_digit_with_ghost(painter, toh_spacing * 2, toh_y,
+                                        int(toh_sec_str[1]), toh_dot_size, toh_dot_offset)
+
         dot_size = 1.6
         # set painter to 12 o'clock position
         painter.rotate(-90.0)
@@ -506,9 +550,10 @@ class ClockWidget(QtWidgets.QWidget):
 
         # end digital clock mode
 
-    def draw_colon(self, painter, digit_start_pos_x=0.0, digit_start_pos_y=0.0, dot_size=1.6, dot_offset=4.5, slant=15):
-        # paint colon only half a second
-        if self.time.msec() < 500 or self.staticColon:
+    def draw_colon(self, painter, digit_start_pos_x=0.0, digit_start_pos_y=0.0, dot_size=1.6, dot_offset=4.5, slant=15,
+                   force_static=False):
+        # paint colon only half a second (unless static or forced)
+        if self.time.msec() < 500 or self.staticColon or force_static:
             dot_slant = dot_offset / slant  # horizontal slant of each row
             current_row = +1.5
             painter.drawEllipse(
@@ -679,8 +724,9 @@ if __name__ == '__main__':
     widget.set_am_pm(False)
     widget.set_show_seconds(False)
     widget.set_static_colon(False)
-    widget.set_one_line_time(True)
+    widget.set_one_line_time(False)  # TOH disabled in one-line mode
+    widget.set_show_toh(True)  # Enable TOH count-up timer
     widget.set_logo("images/astrastudio_transparent.png")
     widget.set_logo_upper(True)
     widget.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
