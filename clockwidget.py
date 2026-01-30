@@ -122,6 +122,7 @@ class ClockWidget(QtWidgets.QWidget):
         self.one_line_time = False
         self.logo_upper = False
         self.showTOH = False  # Top Of Hour count-up timer
+        self.showGhostSegments = True  # Show unlit ghost segments behind lit digits
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
@@ -229,6 +230,19 @@ class ClockWidget(QtWidgets.QWidget):
         return self.showTOH
 
     clockShowTOH = QtCore.pyqtProperty("int", get_show_toh, set_show_toh, reset_show_toh)
+
+    @QtCore.pyqtSlot(bool)
+    def set_show_ghost_segments(self, value):
+        """Enable/disable ghost (unlit) segments behind lit digits."""
+        self.showGhostSegments = value
+
+    def reset_show_ghost_segments(self):
+        self.showGhostSegments = True
+
+    def get_show_ghost_segments(self):
+        return self.showGhostSegments
+
+    clockShowGhostSegments = QtCore.pyqtProperty("int", get_show_ghost_segments, set_show_ghost_segments, reset_show_ghost_segments)
 
     @QtCore.pyqtSlot(QtGui.QColor)
     def set_digi_hour_color(self, color=QtGui.QColor(50, 50, 255, 255)):
@@ -566,17 +580,16 @@ class ClockWidget(QtWidgets.QWidget):
 
     def _draw_digit_with_ghost(self, painter, x, y, value, dot_size=1.6, dot_offset=5.0, slant=19.0):
         """Draw digit with ghost (unlit) segments visible for visual balance."""
-        # AIDEV-TODO: Add self.showGhostSegments toggle controlled by settings
+        if self.showGhostSegments:
+            # Draw ghost segments first (digit "8" = all segments)
+            ghost_color = QtGui.QColor(self.digiDigitColor)
+            ghost_color.setAlpha(int(self.digiDigitColor.alpha() * 0.05))
 
-        # Draw ghost segments first (digit "8" = all segments)
-        ghost_color = QtGui.QColor(self.digiDigitColor)
-        ghost_color.setAlpha(int(self.digiDigitColor.alpha() * 0.05))
-
-        painter.save()
-        painter.setBrush(ghost_color)
-        painter.setPen(ghost_color)
-        self.draw_digit(painter, x, y, 8, dot_size, dot_offset, slant)
-        painter.restore()
+            painter.save()
+            painter.setBrush(ghost_color)
+            painter.setPen(ghost_color)
+            self.draw_digit(painter, x, y, 8, dot_size, dot_offset, slant)
+            painter.restore()
 
         # Draw lit segments on top
         self.draw_digit(painter, x, y, value, dot_size, dot_offset, slant)

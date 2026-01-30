@@ -335,18 +335,47 @@ class TestClockWidgetLogo:
         assert clock_widget.logo_upper is False
 
 
+class TestClockWidgetShowGhostSegments:
+    """Test show ghost segments properties"""
+
+    def test_set_show_ghost_segments_true(self, clock_widget):
+        """Test set_show_ghost_segments() with True"""
+        clock_widget.set_show_ghost_segments(True)
+        assert clock_widget.showGhostSegments is True
+        assert clock_widget.get_show_ghost_segments() is True
+
+    def test_set_show_ghost_segments_false(self, clock_widget):
+        """Test set_show_ghost_segments() with False"""
+        clock_widget.set_show_ghost_segments(False)
+        assert clock_widget.showGhostSegments is False
+        assert clock_widget.get_show_ghost_segments() is False
+
+    def test_reset_show_ghost_segments(self, clock_widget):
+        """Test reset_show_ghost_segments() resets to True"""
+        clock_widget.set_show_ghost_segments(False)
+        clock_widget.reset_show_ghost_segments()
+        assert clock_widget.showGhostSegments is True
+
+    def test_show_ghost_segments_default_value(self, clock_widget):
+        """Test showGhostSegments defaults to True"""
+        # Create fresh widget to test default
+        fresh_widget = ClockWidget()
+        fresh_widget.timer = Mock()
+        assert fresh_widget.showGhostSegments is True
+
+
 class TestClockWidgetUpdateTime:
     """Test update_time() method"""
 
     def test_update_time(self, clock_widget):
         """Test update_time() emits signal"""
         clock_widget.timeChanged = Mock()
-        
+
         with patch('clockwidget.QtCore.QTime') as mock_time:
             mock_current_time = QTime(12, 30, 45)
             mock_time.currentTime.return_value = mock_current_time
-            
+
             clock_widget.update_time()
-            
+
             clock_widget.timeChanged.emit.assert_called_once_with(mock_current_time)
 

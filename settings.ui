@@ -1320,6 +1320,20 @@
                 </widget>
                </item>
                <item>
+                <widget class="QCheckBox" name="showTOH">
+                 <property name="text">
+                  <string>Show TOH countdown</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="showGhostSegments">
+                 <property name="text">
+                  <string>Show ghost segments</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
                 <widget class="QCheckBox" name="useTextclock">
                  <property name="text">
                   <string>Use textclock</string>
@@ -4544,6 +4558,8 @@ Public License instead of this License.  But first, please read
   <tabstop>updateKey</tabstop>
   <tabstop>showSeconds</tabstop>
   <tabstop>staticColon</tabstop>
+  <tabstop>showTOH</tabstop>
+  <tabstop>showGhostSegments</tabstop>
   <tabstop>useTextclock</tabstop>
   <tabstop>plainTextEdit</tabstop>
   <tabstop>LED1</tabstop>

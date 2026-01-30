@@ -78,7 +78,9 @@ DEFAULT_CLOCK_DIGITAL_SECOND_COLOR: str = "#F33B58"
 DEFAULT_CLOCK_DIGITAL_DIGIT_COLOR: str = "#54D1F3"
 DEFAULT_CLOCK_LOGO_PATH: str = ":/astrastudio_logo/images/astrastudio_transparent.png"
 DEFAULT_CLOCK_LOGO_UPPER: bool = True
+DEFAULT_CLOCK_SHOW_TOH: bool = True
 DEFAULT_CLOCK_USE_TEXT_CLOCK: bool = True
+DEFAULT_CLOCK_SHOW_GHOST_SEGMENTS: bool = True
 
 # Timer/AIR Settings
 DEFAULT_TIMER_AIR_ENABLED: bool = True
@@ -196,7 +198,9 @@ def get_default(group: str, key: str, default: Any = None) -> Any:
             "digitaldigitcolor": DEFAULT_CLOCK_DIGITAL_DIGIT_COLOR,
             "logopath": DEFAULT_CLOCK_LOGO_PATH,
             "logoUpper": DEFAULT_CLOCK_LOGO_UPPER,
+            "showTOH": DEFAULT_CLOCK_SHOW_TOH,
             "useTextClock": DEFAULT_CLOCK_USE_TEXT_CLOCK,
+            "showGhostSegments": DEFAULT_CLOCK_SHOW_GHOST_SEGMENTS,
         }
         return defaults.get(key, default)
     
