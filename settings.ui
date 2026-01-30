@@ -1550,17 +1550,17 @@
               </widget>
              </item>
              <item row="2" column="0">
-              <widget class="QLabel" name="label_streammonitor_poll">
+              <widget class="QLabel" name="label_streammonitor_reconnect">
                <property name="text">
-                <string>Poll Interval (sec)</string>
+                <string>Reconnect Delay (sec)</string>
                </property>
                <property name="buddy">
-                <cstring>streamMonitorPollInterval</cstring>
+                <cstring>streamMonitorReconnectDelay</cstring>
                </property>
               </widget>
              </item>
              <item row="2" column="1">
-              <widget class="QSpinBox" name="streamMonitorPollInterval">
+              <widget class="QSpinBox" name="streamMonitorReconnectDelay">
                <property name="minimum">
                 <number>1</number>
                </property>
@@ -1568,7 +1568,7 @@
                 <number>60</number>
                </property>
                <property name="value">
-                <number>3</number>
+                <number>5</number>
                </property>
               </widget>
              </item>

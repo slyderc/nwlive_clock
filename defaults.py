@@ -142,8 +142,8 @@ DEFAULT_WEATHER_UNIT: str = "Fahrenheit"  # Display name, not unit code
 # Stream Monitor Settings
 DEFAULT_STREAM_MONITOR_ENABLED: bool = True
 DEFAULT_STREAM_MONITOR_URL: str = "http://zipstream.climate.local/play.m3u"
-DEFAULT_STREAM_MONITOR_POLL_INTERVAL: int = 3  # Seconds between checks
-DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD: int = 10  # Seconds offline before stopping AIR4
+DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD: int = 10  # Seconds without data before declaring offline
+DEFAULT_STREAM_MONITOR_RECONNECT_DELAY: int = 5  # Seconds between reconnect attempts
 
 # Helper function to get default value by key path
 def get_default(group: str, key: str, default: Any = None) -> Any:
@@ -280,8 +280,8 @@ def get_default(group: str, key: str, default: Any = None) -> Any:
         defaults = {
             "streamMonitorEnabled": DEFAULT_STREAM_MONITOR_ENABLED,
             "streamMonitorUrl": DEFAULT_STREAM_MONITOR_URL,
-            "streamMonitorPollInterval": DEFAULT_STREAM_MONITOR_POLL_INTERVAL,
             "streamMonitorOfflineThreshold": DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD,
+            "streamMonitorReconnectDelay": DEFAULT_STREAM_MONITOR_RECONNECT_DELAY,
         }
         return defaults.get(key, default)
 

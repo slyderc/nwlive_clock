@@ -38,24 +38,35 @@
 """
 Stream Monitor for OnAirScreen
 
-This module monitors an Icecast stream and automatically controls the AIR4
-(Stream) widget based on stream availability. When the stream goes online,
-AIR4 starts with timer reset. When offline for a configurable threshold,
-AIR4 stops.
+This module monitors an Icecast stream using a CONTINUOUS CONNECTION approach
+instead of polling. This avoids the rapid connect/disconnect cycle that can
+overwhelm resource-limited streaming appliances like the Telos Z/IPStream R/1.
+
+Architecture:
+- Maintains a single persistent connection to the stream
+- Monitors data flow in real-time (instant online/offline detection)
+- On disconnect, waits before attempting reconnection (no thread churn)
+- Actually verifies audio is flowing, not just "server responds"
+
+When the stream goes online, AIR4 starts with timer reset.
+When offline for a configurable threshold, AIR4 stops.
 """
 
 import logging
+import socket
+import time
 import urllib.request
 import urllib.error
+import urllib.parse
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import QSettings, QTimer, QThread
+from PyQt6.QtCore import QSettings, QThread, pyqtSignal
 
 from defaults import (
     DEFAULT_STREAM_MONITOR_ENABLED,
     DEFAULT_STREAM_MONITOR_URL,
-    DEFAULT_STREAM_MONITOR_POLL_INTERVAL,
     DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD,
+    DEFAULT_STREAM_MONITOR_RECONNECT_DELAY,
 )
 from exceptions import WidgetAccessError, log_exception
 from utils import settings_group
@@ -66,91 +77,165 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class StreamCheckThread(QThread):
+class StreamMonitorThread(QThread):
     """
-    Thread for checking Icecast stream availability
+    Maintains persistent connection to stream, monitors data flow.
 
-    Performs HTTP GET to stream URL, reads first few bytes to verify
-    the stream is delivering data, then closes connection immediately.
+    AIDEV-NOTE: This approach uses ONE long-lived connection instead of rapid
+    connect/disconnect polling. This is critical for Z/IPStream R/1 appliances
+    which have limited thread pools and fail under rapid connection churn.
+
+    Signals:
+        stream_online: Emitted when stream comes online (data flowing)
+        stream_offline: Emitted when stream goes offline (no data for threshold)
     """
 
-    def __init__(self, monitor: "StreamMonitor"):
+    stream_online = pyqtSignal()
+    stream_offline = pyqtSignal()
+
+    def __init__(self, stream_url: str, offline_threshold: int, reconnect_delay: int):
         """
-        Initialize stream check thread
+        Initialize stream monitor thread.
 
         Args:
-            monitor: Reference to StreamMonitor instance
+            stream_url: URL of the stream to monitor
+            offline_threshold: Seconds without data before declaring offline
+            reconnect_delay: Seconds to wait between reconnection attempts
         """
-        self.monitor = monitor
-        QThread.__init__(self)
-        self._initialized = True  # Mark that __init__ was called
+        super().__init__()
+        self._stream_url = stream_url
+        self._offline_threshold = offline_threshold
+        self._reconnect_delay = reconnect_delay
+        self._running = True
+        self._is_online = False
+        self._initialized = True
 
     def __del__(self):
         try:
-            # Only call wait() if the thread was properly initialized
             if hasattr(self, '_initialized') and self._initialized:
                 self.wait()
         except (RuntimeError, AttributeError) as e:
             error = WidgetAccessError(
-                f"Error accessing stream check thread (thread may not be initialized): {e}",
-                widget_name="StreamCheckThread",
+                f"Error accessing stream monitor thread: {e}",
+                widget_name="StreamMonitorThread",
                 attribute="stop"
             )
             log_exception(logger, error, use_exc_info=False)
 
     def run(self):
-        """Check stream and update monitor state (runs in background thread)"""
-        logger.debug("StreamCheckThread.run started")
+        """
+        Main thread loop - maintains persistent stream connection.
 
-        stream_url = self.monitor.stream_url
-        if not stream_url:
-            logger.debug("No stream URL configured")
-            self.monitor._last_check_success = False
-            return
+        Architecture:
+        1. Connect to stream
+        2. Read chunks continuously, emit online signal
+        3. On error/timeout/no data, emit offline signal
+        4. Wait reconnect_delay seconds
+        5. Goto 1
+        """
+        logger.debug("StreamMonitorThread started")
 
-        try:
-            # AIDEV-NOTE: Brief HTTP GET with timeout - read first 1KB to prove stream is live
-            request = urllib.request.Request(
-                stream_url,
-                headers={'User-Agent': 'OnAirScreen/1.0 StreamMonitor'}
-            )
-            with urllib.request.urlopen(request, timeout=5) as response:
-                data = response.read(1024)  # Read 1KB max
-                self.monitor._last_check_success = len(data) > 0
-                logger.debug(f"Stream check success: read {len(data)} bytes")
-        except urllib.error.HTTPError as e:
-            logger.debug(f"Stream check failed (HTTP {e.code}): {e.reason}")
-            self.monitor._last_check_success = False
-        except urllib.error.URLError as e:
-            logger.debug(f"Stream check failed (URL error): {e.reason}")
-            self.monitor._last_check_success = False
-        except Exception as e:
-            logger.debug(f"Stream check failed: {e}")
-            self.monitor._last_check_success = False
+        while self._running:
+            try:
+                self._monitor_stream()
+            except Exception as e:
+                if self._running:
+                    if self._is_online:
+                        logger.info(f"Stream connection lost: {e}")
+                        self._is_online = False
+                        self.stream_offline.emit()
+                    else:
+                        logger.debug(f"Stream connection attempt failed: {e}")
 
-    def stop(self):
-        """Stop the thread"""
-        self.quit()
+                    # Wait before reconnecting (don't spam the device)
+                    self._sleep_with_check(self._reconnect_delay)
+
+        logger.debug("StreamMonitorThread stopped")
+
+    def _sleep_with_check(self, seconds: int) -> None:
+        """Sleep for specified seconds, checking _running flag periodically."""
+        for _ in range(seconds * 10):  # Check every 100ms
+            if not self._running:
+                return
+            time.sleep(0.1)
+
+    def _monitor_stream(self) -> None:
+        """
+        Connect to stream and monitor data flow.
+
+        Reads small chunks continuously, verifying data is actually flowing.
+        If no data received for offline_threshold seconds, raises exception.
+        """
+        if not self._stream_url:
+            raise ValueError("No stream URL configured")
+
+        logger.debug(f"Connecting to stream: {self._stream_url}")
+
+        request = urllib.request.Request(
+            self._stream_url,
+            headers={
+                'User-Agent': 'OnAirScreen/1.0 StreamMonitor',
+                'Connection': 'keep-alive',
+                'Accept': '*/*',
+            }
+        )
+
+        # AIDEV-NOTE: timeout here is for initial connection only
+        with urllib.request.urlopen(request, timeout=10) as response:
+            logger.info(f"Stream connection established: {self._stream_url}")
+
+            if not self._is_online:
+                self._is_online = True
+                self.stream_online.emit()
+
+            last_data_time = time.time()
+
+            while self._running:
+                try:
+                    # Read small chunk, discard it (just verify data is flowing)
+                    # AIDEV-NOTE: 4KB is small enough to not buffer much audio
+                    # but large enough to avoid excessive syscall overhead
+                    chunk = response.read(4096)
+
+                    if chunk:
+                        last_data_time = time.time()
+                    else:
+                        # Empty read = stream ended
+                        raise ConnectionError("Stream ended (empty read)")
+
+                except socket.timeout:
+                    # Check if we've exceeded offline threshold
+                    elapsed = time.time() - last_data_time
+                    if elapsed > self._offline_threshold:
+                        raise ConnectionError(f"No data received for {elapsed:.1f}s")
+                    # Otherwise continue waiting
+
+    def stop(self) -> None:
+        """Signal thread to stop and wait for it to finish."""
+        logger.debug("Stopping StreamMonitorThread")
+        self._running = False
+
+    def is_online(self) -> bool:
+        """Check if stream is currently online."""
+        return self._is_online
 
 
 class StreamMonitor:
     """
-    Monitors Icecast stream and controls AIR4 based on availability
+    Monitors Icecast stream and controls AIR4 based on availability.
 
-    State Machine:
-    - UNKNOWN -> check succeeds -> ONLINE (start AIR4 timer)
-    - ONLINE -> check fails -> FAILING (increment counter)
-    - FAILING -> counter < threshold -> FAILING (keep checking)
-    - FAILING -> counter >= threshold -> OFFLINE (stop AIR4 timer)
-    - OFFLINE -> check succeeds -> ONLINE (reset timer, start AIR4)
+    Uses continuous connection approach instead of polling:
+    - Single persistent connection (no thread pool exhaustion)
+    - Real-time detection (instant online/offline signals)
+    - Graceful reconnection with configurable delay
 
     This class follows the NTPManager pattern: thread updates state,
-    timer callback handles UI in main thread.
+    signals handle UI in main thread.
     """
 
     def __init__(self, main_screen: "MainScreen"):
         """
-        Initialize stream monitor
+        Initialize stream monitor.
 
         Args:
             main_screen: Reference to MainScreen instance for AIR4 control
@@ -160,31 +245,24 @@ class StreamMonitor:
         # Load configuration
         self._load_config()
 
-        # State (updated by thread, read by timer callback)
-        self._last_check_success: bool = False
-        self._is_online: bool = False
-        self._consecutive_failures: int = 0
-
         # Resolved stream URL (from .m3u or direct)
         self._resolved_stream_url: str | None = None
         self._m3u_url: str | None = None
 
-        # Thread and timer (same pattern as NTPManager)
-        self._check_thread = StreamCheckThread(self)
-        self._poll_timer = QTimer()
-        self._poll_timer.timeout.connect(self._on_timer_tick)
+        # Monitor thread
+        self._monitor_thread: StreamMonitorThread | None = None
 
         if self._enabled and self._stream_url:
-            logger.info(f"Stream monitoring enabled, polling every {self._poll_interval}s")
+            logger.info(f"Stream monitoring enabled (continuous connection mode)")
             # Resolve URL immediately if it's an .m3u
             self._resolve_stream_url()
-            # Start polling
-            self._poll_timer.start(self._poll_interval * 1000)
+            # Start monitoring
+            self._start_monitor_thread()
         elif self._enabled:
             logger.warning("Stream monitoring enabled but no URL configured")
 
     def _load_config(self) -> None:
-        """Load configuration from settings"""
+        """Load configuration from settings."""
         settings = QSettings(QSettings.Scope.UserScope, "astrastudio", "OnAirScreen")
         with settings_group(settings, "StreamMonitoring"):
             self._enabled = settings.value(
@@ -193,20 +271,20 @@ class StreamMonitor:
             self._stream_url = settings.value(
                 'streamMonitorUrl', DEFAULT_STREAM_MONITOR_URL, type=str
             )
-            self._poll_interval = settings.value(
-                'streamMonitorPollInterval', DEFAULT_STREAM_MONITOR_POLL_INTERVAL, type=int
-            )
             self._offline_threshold = settings.value(
                 'streamMonitorOfflineThreshold', DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD, type=int
             )
+            self._reconnect_delay = settings.value(
+                'streamMonitorReconnectDelay', DEFAULT_STREAM_MONITOR_RECONNECT_DELAY, type=int
+            )
 
         logger.debug(f"Stream monitor config: enabled={self._enabled}, "
-                    f"url={self._stream_url}, poll={self._poll_interval}s, "
-                    f"threshold={self._offline_threshold}s")
+                    f"url={self._stream_url}, threshold={self._offline_threshold}s, "
+                    f"reconnect_delay={self._reconnect_delay}s")
 
     def _resolve_stream_url(self) -> None:
         """
-        Resolve .m3u playlist to actual stream URL
+        Resolve .m3u playlist to actual stream URL.
 
         If URL ends with .m3u, fetch and parse it to get the stream URL.
         Otherwise use the URL directly.
@@ -247,56 +325,47 @@ class StreamMonitor:
 
     @property
     def stream_url(self) -> str | None:
-        """Get the resolved stream URL (from .m3u or direct)"""
+        """Get the resolved stream URL (from .m3u or direct)."""
         return self._resolved_stream_url
 
-    def _on_timer_tick(self) -> None:
-        """
-        Timer callback - runs in main thread, safe to call main_screen methods
-
-        Processes the result from the last check and starts the next one.
-        """
-        if self._check_thread.isRunning():
-            logger.debug("Previous stream check still running, skipping")
+    def _start_monitor_thread(self) -> None:
+        """Create and start the monitor thread."""
+        if not self._resolved_stream_url:
+            logger.warning("Cannot start monitor: no resolved stream URL")
             return
 
-        # Process result from last check
-        if self._last_check_success:
-            self._consecutive_failures = 0
-            if not self._is_online:
-                logger.info("Stream came online, starting AIR4")
-                self._is_online = True
-                # Reset timer and start AIR4
-                self.main_screen.stream_timer_reset()
-                self.main_screen.start_air4()
-        else:
-            self._consecutive_failures += 1
-            failure_duration = self._consecutive_failures * self._poll_interval
-            logger.debug(f"Stream check failed, consecutive failures: {self._consecutive_failures} "
-                        f"({failure_duration}s)")
+        self._monitor_thread = StreamMonitorThread(
+            stream_url=self._resolved_stream_url,
+            offline_threshold=self._offline_threshold,
+            reconnect_delay=self._reconnect_delay,
+        )
+        self._monitor_thread.stream_online.connect(self._on_stream_online)
+        self._monitor_thread.stream_offline.connect(self._on_stream_offline)
+        self._monitor_thread.start()
 
-            if self._is_online and failure_duration >= self._offline_threshold:
-                logger.info(f"Stream offline for {failure_duration}s (threshold: {self._offline_threshold}s), stopping AIR4")
-                self._is_online = False
-                self.main_screen.stop_air4()
+    def _on_stream_online(self) -> None:
+        """Handle stream coming online (runs in main thread via signal)."""
+        logger.info("Stream online - starting AIR4 with timer reset")
+        self.main_screen.stream_timer_reset()
+        self.main_screen.start_air4()
 
-        # If .m3u resolution failed, try again
-        if self._m3u_url and not self._resolved_stream_url:
-            self._resolve_stream_url()
-
-        # Start next check
-        self._check_thread.start()
+    def _on_stream_offline(self) -> None:
+        """Handle stream going offline (runs in main thread via signal)."""
+        logger.info("Stream offline - stopping AIR4")
+        self.main_screen.stop_air4()
 
     def is_enabled(self) -> bool:
-        """Check if stream monitoring is enabled"""
+        """Check if stream monitoring is enabled."""
         return self._enabled
 
     def is_online(self) -> bool:
-        """Check if stream is currently online"""
-        return self._is_online
+        """Check if stream is currently online."""
+        if self._monitor_thread:
+            return self._monitor_thread.is_online()
+        return False
 
     def start(self) -> None:
-        """Start stream monitoring"""
+        """Start stream monitoring."""
         if not self._enabled:
             logger.debug("Stream monitoring not enabled, not starting")
             return
@@ -307,24 +376,23 @@ class StreamMonitor:
 
         logger.info("Starting stream monitoring")
         self._resolve_stream_url()
-        self._poll_timer.start(self._poll_interval * 1000)
+        self._start_monitor_thread()
 
     def stop(self) -> None:
-        """Stop stream monitoring"""
+        """Stop stream monitoring."""
         logger.debug("Stopping stream monitoring")
-        self._poll_timer.stop()
-        self._check_thread.stop()
+        if self._monitor_thread:
+            self._monitor_thread.stop()
+            self._monitor_thread.wait(5000)  # Wait up to 5s for thread to finish
+            self._monitor_thread = None
 
     def restart(self) -> None:
-        """Restart stream monitoring with current settings"""
+        """Restart stream monitoring with current settings."""
         logger.info("Restarting stream monitoring")
         self.stop()
         self._load_config()
 
         # Reset state
-        self._last_check_success = False
-        self._is_online = False
-        self._consecutive_failures = 0
         self._resolved_stream_url = None
 
         if self._enabled and self._stream_url:

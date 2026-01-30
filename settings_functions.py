@@ -727,11 +727,11 @@ class Settings(QWidget, Ui_Settings):
         with settings_group(settings, "StreamMonitoring"):
             self.streamMonitorEnabled.setChecked(settings.value('streamMonitorEnabled', DEFAULT_STREAM_MONITOR_ENABLED, type=bool))
             self.streamMonitorUrl.setText(settings.value('streamMonitorUrl', DEFAULT_STREAM_MONITOR_URL, type=str))
-            self.streamMonitorPollInterval.setValue(settings.value('streamMonitorPollInterval', DEFAULT_STREAM_MONITOR_POLL_INTERVAL, type=int))
+            self.streamMonitorReconnectDelay.setValue(settings.value('streamMonitorReconnectDelay', DEFAULT_STREAM_MONITOR_RECONNECT_DELAY, type=int))
             self.streamMonitorOfflineThreshold.setValue(settings.value('streamMonitorOfflineThreshold', DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD, type=int))
             # Enable/disable fields based on checkbox
             self.streamMonitorUrl.setEnabled(self.streamMonitorEnabled.isChecked())
-            self.streamMonitorPollInterval.setEnabled(self.streamMonitorEnabled.isChecked())
+            self.streamMonitorReconnectDelay.setEnabled(self.streamMonitorEnabled.isChecked())
             self.streamMonitorOfflineThreshold.setEnabled(self.streamMonitorEnabled.isChecked())
 
         with settings_group(settings, "Formatting"):
@@ -916,7 +916,7 @@ class Settings(QWidget, Ui_Settings):
         with settings_group(settings, "StreamMonitoring"):
             settings.setValue('streamMonitorEnabled', self.streamMonitorEnabled.isChecked())
             settings.setValue('streamMonitorUrl', self.streamMonitorUrl.text())
-            settings.setValue('streamMonitorPollInterval', self.streamMonitorPollInterval.value())
+            settings.setValue('streamMonitorReconnectDelay', self.streamMonitorReconnectDelay.value())
             settings.setValue('streamMonitorOfflineThreshold', self.streamMonitorOfflineThreshold.value())
 
         with settings_group(settings, "Formatting"):
@@ -1563,7 +1563,7 @@ class Settings(QWidget, Ui_Settings):
     def _on_stream_monitor_enabled_changed(self, enabled: bool) -> None:
         """Handle stream monitor enabled checkbox state change"""
         self.streamMonitorUrl.setEnabled(enabled)
-        self.streamMonitorPollInterval.setEnabled(enabled)
+        self.streamMonitorReconnectDelay.setEnabled(enabled)
         self.streamMonitorOfflineThreshold.setEnabled(enabled)
 
         # Timer/AIR settings

@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 Unit tests for stream_monitor.py
+
+Tests the continuous connection approach for stream monitoring.
 """
 
 import pytest
+import time
 from unittest.mock import Mock, MagicMock, patch, PropertyMock
 from PyQt6.QtWidgets import QApplication
 
@@ -14,72 +17,75 @@ if not QApplication.instance():
     app = QApplication(sys.argv)
 
 
-class TestStreamCheckThread:
-    """Tests for StreamCheckThread"""
+class TestStreamMonitorThread:
+    """Tests for StreamMonitorThread"""
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
+    @patch('stream_monitor.StreamMonitorThread.__del__')
     @patch('stream_monitor.urllib.request.urlopen')
-    def test_run_success(self, mock_urlopen, mock_del):
-        """Test StreamCheckThread.run() with successful stream check"""
-        from stream_monitor import StreamCheckThread
+    def test_run_emits_online_signal(self, mock_urlopen, mock_del):
+        """Test that stream_online signal is emitted when connection established"""
+        from stream_monitor import StreamMonitorThread
 
-        # Create mock monitor
-        mock_monitor = Mock()
-        mock_monitor.stream_url = "http://example.com/stream"
-        mock_monitor._last_check_success = False
-
-        # Mock urlopen response
+        # Mock response that returns data then raises to exit
         mock_response = Mock()
-        mock_response.read.return_value = b'audio data here'
+        mock_response.read.side_effect = [b'audio data', ConnectionError("test exit")]
         mock_response.__enter__ = Mock(return_value=mock_response)
         mock_response.__exit__ = Mock(return_value=False)
         mock_urlopen.return_value = mock_response
 
-        # Create thread without initializing QThread properly
-        thread = StreamCheckThread.__new__(StreamCheckThread)
-        thread.monitor = mock_monitor
+        # Create thread
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._stream_url = "http://example.com/stream"
+        thread._offline_threshold = 10
+        thread._reconnect_delay = 5
+        thread._running = False  # Will stop after first iteration
+        thread._is_online = False
         thread._initialized = True
+        thread.stream_online = Mock()
+        thread.stream_offline = Mock()
 
-        # Run the thread logic
-        thread.run()
+        # Run _monitor_stream directly
+        try:
+            thread._running = True
+            thread._monitor_stream()
+        except ConnectionError:
+            pass
 
-        # Verify success was recorded
-        assert mock_monitor._last_check_success is True
+        # Verify online signal was emitted
+        thread.stream_online.emit.assert_called_once()
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
+    @patch('stream_monitor.StreamMonitorThread.__del__')
     @patch('stream_monitor.urllib.request.urlopen')
-    def test_run_empty_response(self, mock_urlopen, mock_del):
-        """Test StreamCheckThread.run() with empty response (stream offline)"""
-        from stream_monitor import StreamCheckThread
-
-        mock_monitor = Mock()
-        mock_monitor.stream_url = "http://example.com/stream"
-        mock_monitor._last_check_success = True
+    def test_run_emits_offline_on_empty_read(self, mock_urlopen, mock_del):
+        """Test that offline signal is emitted when stream returns empty data"""
+        from stream_monitor import StreamMonitorThread
 
         mock_response = Mock()
-        mock_response.read.return_value = b''
+        mock_response.read.return_value = b''  # Empty read = stream ended
         mock_response.__enter__ = Mock(return_value=mock_response)
         mock_response.__exit__ = Mock(return_value=False)
         mock_urlopen.return_value = mock_response
 
-        thread = StreamCheckThread.__new__(StreamCheckThread)
-        thread.monitor = mock_monitor
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._stream_url = "http://example.com/stream"
+        thread._offline_threshold = 10
+        thread._reconnect_delay = 5
+        thread._running = True
+        thread._is_online = False
         thread._initialized = True
+        thread.stream_online = Mock()
+        thread.stream_offline = Mock()
 
-        thread.run()
+        # Should raise ConnectionError on empty read
+        with pytest.raises(ConnectionError, match="empty read"):
+            thread._monitor_stream()
 
-        assert mock_monitor._last_check_success is False
-
-    @patch('stream_monitor.StreamCheckThread.__del__')
+    @patch('stream_monitor.StreamMonitorThread.__del__')
     @patch('stream_monitor.urllib.request.urlopen')
     def test_run_http_error(self, mock_urlopen, mock_del):
-        """Test StreamCheckThread.run() with HTTP error"""
-        from stream_monitor import StreamCheckThread
+        """Test that connection errors are raised"""
+        from stream_monitor import StreamMonitorThread
         import urllib.error
-
-        mock_monitor = Mock()
-        mock_monitor.stream_url = "http://example.com/stream"
-        mock_monitor._last_check_success = True
 
         mock_urlopen.side_effect = urllib.error.HTTPError(
             url="http://example.com/stream",
@@ -89,68 +95,143 @@ class TestStreamCheckThread:
             fp=None
         )
 
-        thread = StreamCheckThread.__new__(StreamCheckThread)
-        thread.monitor = mock_monitor
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._stream_url = "http://example.com/stream"
+        thread._offline_threshold = 10
+        thread._reconnect_delay = 5
+        thread._running = True
+        thread._is_online = False
         thread._initialized = True
+        thread.stream_online = Mock()
+        thread.stream_offline = Mock()
 
-        thread.run()
+        with pytest.raises(urllib.error.HTTPError):
+            thread._monitor_stream()
 
-        assert mock_monitor._last_check_success is False
-
-    @patch('stream_monitor.StreamCheckThread.__del__')
+    @patch('stream_monitor.StreamMonitorThread.__del__')
     @patch('stream_monitor.urllib.request.urlopen')
     def test_run_url_error(self, mock_urlopen, mock_del):
-        """Test StreamCheckThread.run() with URL error (network unreachable)"""
-        from stream_monitor import StreamCheckThread
+        """Test that URL errors are raised"""
+        from stream_monitor import StreamMonitorThread
         import urllib.error
-
-        mock_monitor = Mock()
-        mock_monitor.stream_url = "http://example.com/stream"
-        mock_monitor._last_check_success = True
 
         mock_urlopen.side_effect = urllib.error.URLError("Network unreachable")
 
-        thread = StreamCheckThread.__new__(StreamCheckThread)
-        thread.monitor = mock_monitor
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._stream_url = "http://example.com/stream"
+        thread._offline_threshold = 10
+        thread._reconnect_delay = 5
+        thread._running = True
+        thread._is_online = False
         thread._initialized = True
+        thread.stream_online = Mock()
+        thread.stream_offline = Mock()
 
-        thread.run()
+        with pytest.raises(urllib.error.URLError):
+            thread._monitor_stream()
 
-        assert mock_monitor._last_check_success is False
-
-    @patch('stream_monitor.StreamCheckThread.__del__')
+    @patch('stream_monitor.StreamMonitorThread.__del__')
     def test_run_no_url(self, mock_del):
-        """Test StreamCheckThread.run() with no URL configured"""
-        from stream_monitor import StreamCheckThread
+        """Test that ValueError is raised with no URL configured"""
+        from stream_monitor import StreamMonitorThread
 
-        mock_monitor = Mock()
-        mock_monitor.stream_url = ""
-        mock_monitor._last_check_success = True
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._stream_url = ""
+        thread._offline_threshold = 10
+        thread._reconnect_delay = 5
+        thread._running = True
+        thread._is_online = False
+        thread._initialized = True
+        thread.stream_online = Mock()
+        thread.stream_offline = Mock()
 
-        thread = StreamCheckThread.__new__(StreamCheckThread)
-        thread.monitor = mock_monitor
+        with pytest.raises(ValueError, match="No stream URL"):
+            thread._monitor_stream()
+
+    @patch('stream_monitor.StreamMonitorThread.__del__')
+    def test_run_none_url(self, mock_del):
+        """Test that ValueError is raised with None URL"""
+        from stream_monitor import StreamMonitorThread
+
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._stream_url = None
+        thread._offline_threshold = 10
+        thread._reconnect_delay = 5
+        thread._running = True
+        thread._is_online = False
+        thread._initialized = True
+        thread.stream_online = Mock()
+        thread.stream_offline = Mock()
+
+        with pytest.raises(ValueError, match="No stream URL"):
+            thread._monitor_stream()
+
+    @patch('stream_monitor.StreamMonitorThread.__del__')
+    def test_stop(self, mock_del):
+        """Test that stop() sets _running to False"""
+        from stream_monitor import StreamMonitorThread
+
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._running = True
         thread._initialized = True
 
-        thread.run()
+        thread.stop()
 
-        assert mock_monitor._last_check_success is False
+        assert thread._running is False
+
+    @patch('stream_monitor.StreamMonitorThread.__del__')
+    def test_is_online(self, mock_del):
+        """Test that is_online() returns correct state"""
+        from stream_monitor import StreamMonitorThread
+
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._is_online = False
+        thread._initialized = True
+
+        assert thread.is_online() is False
+
+        thread._is_online = True
+        assert thread.is_online() is True
+
+    @patch('stream_monitor.StreamMonitorThread.__del__')
+    @patch('stream_monitor.time.sleep')
+    def test_sleep_with_check_stops_early(self, mock_sleep, mock_del):
+        """Test that _sleep_with_check exits early when _running becomes False"""
+        from stream_monitor import StreamMonitorThread
+
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._running = True
+        thread._initialized = True
+
+        # After 5 sleep calls, set _running to False
+        call_count = [0]
+        def side_effect(duration):
+            call_count[0] += 1
+            if call_count[0] >= 5:
+                thread._running = False
+
+        mock_sleep.side_effect = side_effect
+
+        thread._sleep_with_check(10)  # Would be 100 iterations normally
+
+        # Should have exited early
+        assert call_count[0] == 5
 
 
 class TestStreamMonitorConfig:
     """Tests for StreamMonitor configuration loading"""
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
-    def test_load_config_defaults(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
+    def test_load_config_defaults(self, mock_settings_group, mock_qsettings, mock_thread):
         """Test that defaults are loaded correctly"""
         from stream_monitor import StreamMonitor
         from defaults import (
             DEFAULT_STREAM_MONITOR_ENABLED,
             DEFAULT_STREAM_MONITOR_URL,
-            DEFAULT_STREAM_MONITOR_POLL_INTERVAL,
             DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD,
+            DEFAULT_STREAM_MONITOR_RECONNECT_DELAY,
         )
 
         mock_settings = Mock()
@@ -164,22 +245,21 @@ class TestStreamMonitorConfig:
 
         assert monitor._enabled == DEFAULT_STREAM_MONITOR_ENABLED
         assert monitor._stream_url == DEFAULT_STREAM_MONITOR_URL
-        assert monitor._poll_interval == DEFAULT_STREAM_MONITOR_POLL_INTERVAL
         assert monitor._offline_threshold == DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD
+        assert monitor._reconnect_delay == DEFAULT_STREAM_MONITOR_RECONNECT_DELAY
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
-    def test_load_config_custom(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
+    def test_load_config_custom(self, mock_settings_group, mock_qsettings, mock_thread):
         """Test that custom settings are loaded correctly"""
         from stream_monitor import StreamMonitor
 
         custom_values = {
             'streamMonitorEnabled': True,
             'streamMonitorUrl': 'http://stream.example.com/live.m3u',
-            'streamMonitorPollInterval': 5,
             'streamMonitorOfflineThreshold': 15,
+            'streamMonitorReconnectDelay': 10,
         }
 
         mock_settings = Mock()
@@ -193,19 +273,18 @@ class TestStreamMonitorConfig:
 
         assert monitor._enabled is True
         assert monitor._stream_url == 'http://stream.example.com/live.m3u'
-        assert monitor._poll_interval == 5
         assert monitor._offline_threshold == 15
+        assert monitor._reconnect_delay == 10
 
 
 class TestStreamMonitorM3UParsing:
     """Tests for .m3u playlist parsing"""
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
     @patch('stream_monitor.urllib.request.urlopen')
-    def test_resolve_m3u_simple(self, mock_urlopen, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
+    def test_resolve_m3u_simple(self, mock_urlopen, mock_settings_group, mock_qsettings, mock_thread):
         """Test parsing simple .m3u playlist"""
         from stream_monitor import StreamMonitor
 
@@ -213,8 +292,8 @@ class TestStreamMonitorM3UParsing:
         mock_settings.value.side_effect = lambda key, default, **kwargs: {
             'streamMonitorEnabled': True,
             'streamMonitorUrl': 'http://stream.example.com/play.m3u',
-            'streamMonitorPollInterval': 3,
             'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
         }.get(key, default)
         mock_qsettings.return_value = mock_settings
         mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
@@ -232,12 +311,11 @@ class TestStreamMonitorM3UParsing:
 
         assert monitor._resolved_stream_url == 'http://actual-stream.example.com/live'
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
     @patch('stream_monitor.urllib.request.urlopen')
-    def test_resolve_m3u_with_comments(self, mock_urlopen, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
+    def test_resolve_m3u_with_comments(self, mock_urlopen, mock_settings_group, mock_qsettings, mock_thread):
         """Test parsing .m3u playlist with comments"""
         from stream_monitor import StreamMonitor
 
@@ -245,8 +323,8 @@ class TestStreamMonitorM3UParsing:
         mock_settings.value.side_effect = lambda key, default, **kwargs: {
             'streamMonitorEnabled': True,
             'streamMonitorUrl': 'http://stream.example.com/play.m3u',
-            'streamMonitorPollInterval': 3,
             'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
         }.get(key, default)
         mock_qsettings.return_value = mock_settings
         mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
@@ -264,11 +342,10 @@ class TestStreamMonitorM3UParsing:
 
         assert monitor._resolved_stream_url == 'http://actual-stream.example.com/live'
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
-    def test_resolve_direct_url(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
+    def test_resolve_direct_url(self, mock_settings_group, mock_qsettings, mock_thread):
         """Test that direct stream URL (non-.m3u) is used as-is"""
         from stream_monitor import StreamMonitor
 
@@ -276,8 +353,8 @@ class TestStreamMonitorM3UParsing:
         mock_settings.value.side_effect = lambda key, default, **kwargs: {
             'streamMonitorEnabled': True,
             'streamMonitorUrl': 'http://stream.example.com/live',
-            'streamMonitorPollInterval': 3,
             'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
         }.get(key, default)
         mock_qsettings.return_value = mock_settings
         mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
@@ -289,23 +366,22 @@ class TestStreamMonitorM3UParsing:
         assert monitor._resolved_stream_url == 'http://stream.example.com/live'
 
 
-class TestStreamMonitorStateMachine:
-    """Tests for stream monitor state machine"""
+class TestStreamMonitorSignals:
+    """Tests for signal-based state handling"""
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
-    def test_state_unknown_to_online(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
-        """Test transition from UNKNOWN to ONLINE when stream comes online"""
+    def test_on_stream_online_starts_air4(self, mock_settings_group, mock_qsettings, mock_thread):
+        """Test that _on_stream_online starts AIR4 with timer reset"""
         from stream_monitor import StreamMonitor
 
         mock_settings = Mock()
         mock_settings.value.side_effect = lambda key, default, **kwargs: {
             'streamMonitorEnabled': True,
             'streamMonitorUrl': 'http://stream.example.com/live',
-            'streamMonitorPollInterval': 3,
             'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
         }.get(key, default)
         mock_qsettings.return_value = mock_settings
         mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
@@ -317,77 +393,25 @@ class TestStreamMonitorStateMachine:
 
         monitor = StreamMonitor(mock_main_screen)
 
-        # Simulate check thread completing
-        monitor._check_thread = Mock()
-        monitor._check_thread.isRunning.return_value = False
-        monitor._check_thread.start = Mock()
+        # Call the handler directly
+        monitor._on_stream_online()
 
-        # Set successful check result
-        monitor._last_check_success = True
-
-        # Trigger timer tick
-        monitor._on_timer_tick()
-
-        # Verify state changed to online
-        assert monitor._is_online is True
         mock_main_screen.stream_timer_reset.assert_called_once()
         mock_main_screen.start_air4.assert_called_once()
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
-    def test_state_online_to_failing(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
-        """Test transition from ONLINE to FAILING when check fails"""
+    def test_on_stream_offline_stops_air4(self, mock_settings_group, mock_qsettings, mock_thread):
+        """Test that _on_stream_offline stops AIR4"""
         from stream_monitor import StreamMonitor
 
         mock_settings = Mock()
         mock_settings.value.side_effect = lambda key, default, **kwargs: {
             'streamMonitorEnabled': True,
             'streamMonitorUrl': 'http://stream.example.com/live',
-            'streamMonitorPollInterval': 3,
             'streamMonitorOfflineThreshold': 10,
-        }.get(key, default)
-        mock_qsettings.return_value = mock_settings
-        mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
-        mock_settings_group.return_value.__exit__ = Mock(return_value=False)
-
-        mock_main_screen = Mock()
-        monitor = StreamMonitor(mock_main_screen)
-
-        # Set initial state as online
-        monitor._is_online = True
-        monitor._consecutive_failures = 0
-
-        # Simulate check thread
-        monitor._check_thread = Mock()
-        monitor._check_thread.isRunning.return_value = False
-        monitor._check_thread.start = Mock()
-
-        # Set failed check result
-        monitor._last_check_success = False
-
-        # Trigger timer tick
-        monitor._on_timer_tick()
-
-        # Verify failure counter incremented but still online (threshold not reached)
-        assert monitor._consecutive_failures == 1
-        assert monitor._is_online is True  # Still online, threshold not reached
-
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
-    @patch('stream_monitor.QSettings')
-    @patch('stream_monitor.settings_group')
-    def test_state_failing_to_offline(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
-        """Test transition from FAILING to OFFLINE when threshold reached"""
-        from stream_monitor import StreamMonitor
-
-        mock_settings = Mock()
-        mock_settings.value.side_effect = lambda key, default, **kwargs: {
-            'streamMonitorEnabled': True,
-            'streamMonitorUrl': 'http://stream.example.com/live',
-            'streamMonitorPollInterval': 3,
-            'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
         }.get(key, default)
         mock_qsettings.return_value = mock_settings
         mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
@@ -398,79 +422,19 @@ class TestStreamMonitorStateMachine:
 
         monitor = StreamMonitor(mock_main_screen)
 
-        # Set initial state as online with failures approaching threshold
-        monitor._is_online = True
-        monitor._consecutive_failures = 3  # 3 * 3 = 9 seconds, need one more to exceed 10
+        # Call the handler directly
+        monitor._on_stream_offline()
 
-        monitor._check_thread = Mock()
-        monitor._check_thread.isRunning.return_value = False
-        monitor._check_thread.start = Mock()
-
-        # Set failed check result
-        monitor._last_check_success = False
-
-        # Trigger timer tick
-        monitor._on_timer_tick()
-
-        # Now at 4 * 3 = 12 seconds >= 10 second threshold
-        assert monitor._consecutive_failures == 4
-        assert monitor._is_online is False
         mock_main_screen.stop_air4.assert_called_once()
-
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
-    @patch('stream_monitor.QSettings')
-    @patch('stream_monitor.settings_group')
-    def test_state_offline_to_online(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
-        """Test transition from OFFLINE back to ONLINE"""
-        from stream_monitor import StreamMonitor
-
-        mock_settings = Mock()
-        mock_settings.value.side_effect = lambda key, default, **kwargs: {
-            'streamMonitorEnabled': True,
-            'streamMonitorUrl': 'http://stream.example.com/live',
-            'streamMonitorPollInterval': 3,
-            'streamMonitorOfflineThreshold': 10,
-        }.get(key, default)
-        mock_qsettings.return_value = mock_settings
-        mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
-        mock_settings_group.return_value.__exit__ = Mock(return_value=False)
-
-        mock_main_screen = Mock()
-        mock_main_screen.stream_timer_reset = Mock()
-        mock_main_screen.start_air4 = Mock()
-
-        monitor = StreamMonitor(mock_main_screen)
-
-        # Set initial state as offline
-        monitor._is_online = False
-        monitor._consecutive_failures = 5
-
-        monitor._check_thread = Mock()
-        monitor._check_thread.isRunning.return_value = False
-        monitor._check_thread.start = Mock()
-
-        # Set successful check result
-        monitor._last_check_success = True
-
-        # Trigger timer tick
-        monitor._on_timer_tick()
-
-        # Verify state changed to online
-        assert monitor._is_online is True
-        assert monitor._consecutive_failures == 0
-        mock_main_screen.stream_timer_reset.assert_called_once()
-        mock_main_screen.start_air4.assert_called_once()
 
 
 class TestStreamMonitorMethods:
     """Tests for StreamMonitor public methods"""
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
-    def test_is_enabled_true(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
+    def test_is_enabled_true(self, mock_settings_group, mock_qsettings, mock_thread):
         """Test is_enabled() returns True when enabled"""
         from stream_monitor import StreamMonitor
 
@@ -478,8 +442,8 @@ class TestStreamMonitorMethods:
         mock_settings.value.side_effect = lambda key, default, **kwargs: {
             'streamMonitorEnabled': True,
             'streamMonitorUrl': 'http://stream.example.com/live',
-            'streamMonitorPollInterval': 3,
             'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
         }.get(key, default)
         mock_qsettings.return_value = mock_settings
         mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
@@ -490,20 +454,19 @@ class TestStreamMonitorMethods:
 
         assert monitor.is_enabled() is True
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
-    def test_is_enabled_false(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
+    def test_is_enabled_false(self, mock_settings_group, mock_qsettings, mock_thread):
         """Test is_enabled() returns False when disabled"""
         from stream_monitor import StreamMonitor
 
         mock_settings = Mock()
         mock_settings.value.side_effect = lambda key, default, **kwargs: {
             'streamMonitorEnabled': False,
-            'streamMonitorUrl': '',
-            'streamMonitorPollInterval': 3,
+            'streamMonitorUrl': 'http://stream.example.com/live',
             'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
         }.get(key, default)
         mock_qsettings.return_value = mock_settings
         mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
@@ -514,20 +477,19 @@ class TestStreamMonitorMethods:
 
         assert monitor.is_enabled() is False
 
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
-    def test_is_online(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
-        """Test is_online() returns correct state"""
+    def test_is_online_no_thread(self, mock_settings_group, mock_qsettings, mock_thread):
+        """Test is_online() returns False when no thread"""
         from stream_monitor import StreamMonitor
 
         mock_settings = Mock()
         mock_settings.value.side_effect = lambda key, default, **kwargs: {
             'streamMonitorEnabled': False,
-            'streamMonitorUrl': '',
-            'streamMonitorPollInterval': 3,
+            'streamMonitorUrl': 'http://stream.example.com/live',
             'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
         }.get(key, default)
         mock_qsettings.return_value = mock_settings
         mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
@@ -535,127 +497,241 @@ class TestStreamMonitorMethods:
 
         mock_main_screen = Mock()
         monitor = StreamMonitor(mock_main_screen)
+        monitor._monitor_thread = None
 
         assert monitor.is_online() is False
 
-        monitor._is_online = True
-        assert monitor.is_online() is True
-
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
+    @patch('stream_monitor.StreamMonitorThread')
     @patch('stream_monitor.QSettings')
     @patch('stream_monitor.settings_group')
-    def test_stop(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
-        """Test stop() stops timer and thread"""
-        from stream_monitor import StreamMonitor
-
-        mock_settings = Mock()
-        mock_settings.value.side_effect = lambda key, default, **kwargs: {
-            'streamMonitorEnabled': False,
-            'streamMonitorUrl': '',
-            'streamMonitorPollInterval': 3,
-            'streamMonitorOfflineThreshold': 10,
-        }.get(key, default)
-        mock_qsettings.return_value = mock_settings
-        mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
-        mock_settings_group.return_value.__exit__ = Mock(return_value=False)
-
-        mock_timer = Mock()
-        mock_qtimer.return_value = mock_timer
-
-        mock_main_screen = Mock()
-        monitor = StreamMonitor(mock_main_screen)
-        monitor._check_thread = Mock()
-
-        monitor.stop()
-
-        mock_timer.stop.assert_called_once()
-        monitor._check_thread.stop.assert_called_once()
-
-
-class TestStreamMonitorBriefInterruption:
-    """Tests for handling brief stream interruptions"""
-
-    @patch('stream_monitor.StreamCheckThread.__del__')
-    @patch('stream_monitor.QTimer')
-    @patch('stream_monitor.QSettings')
-    @patch('stream_monitor.settings_group')
-    def test_brief_interruption_stays_online(self, mock_settings_group, mock_qsettings, mock_qtimer, mock_del):
-        """Test that brief interruption (<threshold) keeps stream online"""
+    def test_is_online_from_thread(self, mock_settings_group, mock_qsettings, mock_thread_class):
+        """Test is_online() returns thread's online state"""
         from stream_monitor import StreamMonitor
 
         mock_settings = Mock()
         mock_settings.value.side_effect = lambda key, default, **kwargs: {
             'streamMonitorEnabled': True,
             'streamMonitorUrl': 'http://stream.example.com/live',
-            'streamMonitorPollInterval': 3,
             'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
+        }.get(key, default)
+        mock_qsettings.return_value = mock_settings
+        mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
+        mock_settings_group.return_value.__exit__ = Mock(return_value=False)
+
+        mock_thread = Mock()
+        mock_thread.is_online.return_value = True
+        mock_thread_class.return_value = mock_thread
+
+        mock_main_screen = Mock()
+        monitor = StreamMonitor(mock_main_screen)
+
+        assert monitor.is_online() is True
+        mock_thread.is_online.assert_called()
+
+    @patch('stream_monitor.StreamMonitorThread')
+    @patch('stream_monitor.QSettings')
+    @patch('stream_monitor.settings_group')
+    def test_stop(self, mock_settings_group, mock_qsettings, mock_thread_class):
+        """Test stop() stops thread"""
+        from stream_monitor import StreamMonitor
+
+        mock_settings = Mock()
+        mock_settings.value.side_effect = lambda key, default, **kwargs: {
+            'streamMonitorEnabled': True,
+            'streamMonitorUrl': 'http://stream.example.com/live',
+            'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
+        }.get(key, default)
+        mock_qsettings.return_value = mock_settings
+        mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
+        mock_settings_group.return_value.__exit__ = Mock(return_value=False)
+
+        mock_thread = Mock()
+        mock_thread_class.return_value = mock_thread
+
+        mock_main_screen = Mock()
+        monitor = StreamMonitor(mock_main_screen)
+
+        monitor.stop()
+
+        mock_thread.stop.assert_called()
+        mock_thread.wait.assert_called_with(5000)
+        assert monitor._monitor_thread is None
+
+    @patch('stream_monitor.StreamMonitorThread')
+    @patch('stream_monitor.QSettings')
+    @patch('stream_monitor.settings_group')
+    def test_restart_resets_and_restarts(self, mock_settings_group, mock_qsettings, mock_thread_class):
+        """Test restart() resets state and restarts"""
+        from stream_monitor import StreamMonitor
+
+        mock_settings = Mock()
+        mock_settings.value.side_effect = lambda key, default, **kwargs: {
+            'streamMonitorEnabled': True,
+            'streamMonitorUrl': 'http://stream.example.com/live',
+            'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
+        }.get(key, default)
+        mock_qsettings.return_value = mock_settings
+        mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
+        mock_settings_group.return_value.__exit__ = Mock(return_value=False)
+
+        mock_thread = Mock()
+        mock_thread_class.return_value = mock_thread
+
+        mock_main_screen = Mock()
+        monitor = StreamMonitor(mock_main_screen)
+
+        # Set some state
+        monitor._resolved_stream_url = "http://old-url.com/stream"
+
+        monitor.restart()
+
+        # Verify old thread was stopped
+        mock_thread.stop.assert_called()
+
+        # Verify state was reset (new thread created)
+        assert mock_thread_class.call_count >= 2  # Initial + restart
+
+
+class TestStreamMonitorDisabled:
+    """Tests for disabled stream monitor"""
+
+    @patch('stream_monitor.StreamMonitorThread')
+    @patch('stream_monitor.QSettings')
+    @patch('stream_monitor.settings_group')
+    def test_disabled_no_thread_created(self, mock_settings_group, mock_qsettings, mock_thread_class):
+        """Test that no thread is created when disabled"""
+        from stream_monitor import StreamMonitor
+
+        mock_settings = Mock()
+        mock_settings.value.side_effect = lambda key, default, **kwargs: {
+            'streamMonitorEnabled': False,
+            'streamMonitorUrl': 'http://stream.example.com/live',
+            'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
         }.get(key, default)
         mock_qsettings.return_value = mock_settings
         mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
         mock_settings_group.return_value.__exit__ = Mock(return_value=False)
 
         mock_main_screen = Mock()
-        mock_main_screen.stop_air4 = Mock()
-
         monitor = StreamMonitor(mock_main_screen)
 
-        # Set initial state as online
-        monitor._is_online = True
-        monitor._consecutive_failures = 0
+        mock_thread_class.assert_not_called()
+        assert monitor._monitor_thread is None
 
-        monitor._check_thread = Mock()
-        monitor._check_thread.isRunning.return_value = False
-        monitor._check_thread.start = Mock()
+    @patch('stream_monitor.StreamMonitorThread')
+    @patch('stream_monitor.QSettings')
+    @patch('stream_monitor.settings_group')
+    def test_no_url_no_thread_created(self, mock_settings_group, mock_qsettings, mock_thread_class):
+        """Test that no thread is created when no URL configured"""
+        from stream_monitor import StreamMonitor
 
-        # Simulate 2 failed checks (6 seconds, less than 10 second threshold)
-        monitor._last_check_success = False
-        monitor._on_timer_tick()  # 3 seconds
-        monitor._on_timer_tick()  # 6 seconds
+        mock_settings = Mock()
+        mock_settings.value.side_effect = lambda key, default, **kwargs: {
+            'streamMonitorEnabled': True,
+            'streamMonitorUrl': '',
+            'streamMonitorOfflineThreshold': 10,
+            'streamMonitorReconnectDelay': 5,
+        }.get(key, default)
+        mock_qsettings.return_value = mock_settings
+        mock_settings_group.return_value.__enter__ = Mock(return_value=mock_settings)
+        mock_settings_group.return_value.__exit__ = Mock(return_value=False)
 
-        # Should still be online
-        assert monitor._is_online is True
-        assert monitor._consecutive_failures == 2
-        mock_main_screen.stop_air4.assert_not_called()
+        mock_main_screen = Mock()
+        monitor = StreamMonitor(mock_main_screen)
 
-        # Stream comes back
-        monitor._last_check_success = True
-        monitor._on_timer_tick()
-
-        # Should remain online with reset failure counter
-        assert monitor._is_online is True
-        assert monitor._consecutive_failures == 0
+        mock_thread_class.assert_not_called()
 
 
-class TestStreamMonitorDefaults:
-    """Tests for stream monitor default values"""
+class TestStreamMonitorThreadMainLoop:
+    """Tests for the main run() loop behavior"""
 
-    def test_defaults_exist(self):
-        """Test that all default constants are defined"""
-        from defaults import (
-            DEFAULT_STREAM_MONITOR_ENABLED,
-            DEFAULT_STREAM_MONITOR_URL,
-            DEFAULT_STREAM_MONITOR_POLL_INTERVAL,
-            DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD,
-        )
+    @patch('stream_monitor.StreamMonitorThread.__del__')
+    @patch('stream_monitor.time.sleep')
+    @patch('stream_monitor.urllib.request.urlopen')
+    def test_reconnects_after_failure(self, mock_urlopen, mock_sleep, mock_del):
+        """Test that thread reconnects after connection failure"""
+        from stream_monitor import StreamMonitorThread
+        import urllib.error
 
-        assert DEFAULT_STREAM_MONITOR_ENABLED is True
-        assert DEFAULT_STREAM_MONITOR_URL == "http://zipstream.climate.local/play.m3u"
-        assert DEFAULT_STREAM_MONITOR_POLL_INTERVAL == 3
-        assert DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD == 10
+        # First call fails, second call also fails (to exit cleanly)
+        call_count = [0]
+        def urlopen_side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise urllib.error.URLError("Connection refused")
+            else:
+                raise urllib.error.URLError("Still failing")
 
-    def test_get_default_stream_monitoring_group(self):
-        """Test get_default() returns correct values for StreamMonitoring group"""
-        from defaults import get_default
+        mock_urlopen.side_effect = urlopen_side_effect
 
-        assert get_default("StreamMonitoring", "streamMonitorEnabled") is True
-        assert get_default("StreamMonitoring", "streamMonitorUrl") == "http://zipstream.climate.local/play.m3u"
-        assert get_default("StreamMonitoring", "streamMonitorPollInterval") == 3
-        assert get_default("StreamMonitoring", "streamMonitorOfflineThreshold") == 10
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._stream_url = "http://example.com/stream"
+        thread._offline_threshold = 10
+        thread._reconnect_delay = 5
+        thread._running = True
+        thread._is_online = False
+        thread._initialized = True
+        thread.stream_online = Mock()
+        thread.stream_offline = Mock()
 
-    def test_get_default_unknown_key(self):
-        """Test get_default() returns None for unknown key"""
-        from defaults import get_default
+        # Mock _sleep_with_check to stop after second iteration
+        sleep_count = [0]
+        original_running = thread._running
+        def sleep_side_effect(duration):
+            sleep_count[0] += 1
+            if sleep_count[0] >= 2:
+                thread._running = False
 
-        assert get_default("StreamMonitoring", "unknownKey") is None
-        assert get_default("StreamMonitoring", "unknownKey", "default") == "default"
+        with patch.object(thread, '_sleep_with_check', side_effect=sleep_side_effect):
+            thread.run()
+
+        # Should have attempted connection at least twice
+        assert call_count[0] >= 2
+
+    @patch('stream_monitor.StreamMonitorThread.__del__')
+    @patch('stream_monitor.urllib.request.urlopen')
+    def test_emits_offline_when_was_online(self, mock_urlopen, mock_del):
+        """Test that offline signal is emitted when connection lost after being online"""
+        from stream_monitor import StreamMonitorThread
+        import urllib.error
+
+        # First connect succeeds, then fails
+        mock_response = Mock()
+        mock_response.read.side_effect = [b'audio', ConnectionError("Lost connection")]
+        mock_response.__enter__ = Mock(return_value=mock_response)
+        mock_response.__exit__ = Mock(return_value=False)
+
+        call_count = [0]
+        def urlopen_side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return mock_response
+            else:
+                raise urllib.error.URLError("Still down")
+
+        mock_urlopen.side_effect = urlopen_side_effect
+
+        thread = StreamMonitorThread.__new__(StreamMonitorThread)
+        thread._stream_url = "http://example.com/stream"
+        thread._offline_threshold = 10
+        thread._reconnect_delay = 5
+        thread._running = True
+        thread._is_online = False
+        thread._initialized = True
+        thread.stream_online = Mock()
+        thread.stream_offline = Mock()
+
+        # Stop after first reconnect attempt
+        def sleep_side_effect(duration):
+            thread._running = False
+
+        with patch.object(thread, '_sleep_with_check', side_effect=sleep_side_effect):
+            thread.run()
+
+        # Should have emitted online then offline
+        thread.stream_online.emit.assert_called_once()
+        thread.stream_offline.emit.assert_called_once()
