@@ -38,10 +38,8 @@
 import json
 import logging
 import os
-import textwrap
 from collections import defaultdict
 from pathlib import Path
-from uuid import getnode
 
 import PyQt6.QtNetwork as QtNetwork
 from PyQt6.QtCore import QSettings, QVariant, pyqtSignal, QUrl, QUrlQuery
@@ -50,18 +48,14 @@ from PyQt6.QtWidgets import (QWidget, QColorDialog, QFileDialog, QErrorMessage, 
                               QFontDialog, QInputDialog)
 
 from settings import Ui_Settings
-from utils import TimerUpdateMessageBox, settings_group
+from utils import settings_group
 from version import versionString
 from weatherwidget import WeatherWidget as ww
 from defaults import *  # noqa: F403, F405
 from exceptions import SettingsError, InvalidConfigValueError, log_exception
 from PyQt6.QtGui import QPixmap
 
-try:
-    from distribution import distributionString, update_url # type: ignore
-except ModuleNotFoundError:
-    distributionString = "OpenSource"
-    update_url = "https://customer.astrastudio.de/updatemanager/c"
+distributionString = "OpenSource"
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -172,7 +166,6 @@ class Settings(QWidget, Ui_Settings):
     sigExitRemoteOAS = pyqtSignal(int)
     sigRebootRemoteHost = pyqtSignal(int)
     sigShutdownRemoteHost = pyqtSignal(int)
-    sigCheckForUpdate = pyqtSignal()
 
     def __init__(self, oacmode: bool = False) -> None:
         """
@@ -219,10 +212,7 @@ class Settings(QWidget, Ui_Settings):
         self.distributionLabel.setText(f"Distribution: {distributionString}")
         # set settings path
         self.settingspathLabel.setText(f"Settings Path: {self.settingsPath}")
-        # set update check mode
-        self.manual_update_check = False
-        self.sigCheckForUpdate.connect(self.check_for_updates)
-        
+
         # Set tooltips for all settings widgets
         self._setup_tooltips()
 
@@ -298,7 +288,6 @@ class Settings(QWidget, Ui_Settings):
         self.SloganColor.clicked.connect(self.setSloganColor)
 
         self.owmTestAPI.clicked.connect(self.makeOWMTestCall)
-        self.updateCheckNowButton.clicked.connect(self.trigger_manual_check_for_updates)
 
         # MQTT checkbox connection
         self.enablemqtt.toggled.connect(self._on_mqtt_enabled_changed)
@@ -638,13 +627,6 @@ class Settings(QWidget, Ui_Settings):
             self.Slogan.setText(settings.value('slogan', DEFAULT_SLOGAN))
             self.setStationNameColor(self.getColorFromName(settings.value('stationcolor', DEFAULT_STATION_COLOR)))
             self.setSloganColor(self.getColorFromName(settings.value('slogancolor', DEFAULT_SLOGAN_COLOR)))
-            self.checkBox_UpdateCheck.setChecked(settings.value('updatecheck', DEFAULT_UPDATE_CHECK, type=bool))
-            self.updateKey.setEnabled(settings.value('updatecheck', DEFAULT_UPDATE_CHECK, type=bool))
-            self.label_28.setEnabled(settings.value('updatecheck', DEFAULT_UPDATE_CHECK, type=bool))
-            self.updateCheckNowButton.setEnabled(settings.value('updatecheck', DEFAULT_UPDATE_CHECK, type=bool))
-            self.checkBox_IncludeBetaVersions.setEnabled(settings.value('updatecheck', DEFAULT_UPDATE_CHECK, type=bool))
-            self.updateKey.setText(settings.value('updatekey', DEFAULT_UPDATE_KEY))
-            self.checkBox_IncludeBetaVersions.setChecked(settings.value('updateincludebeta', DEFAULT_UPDATE_INCLUDE_BETA, type=bool))
             self.replaceNOW.setChecked(settings.value('replacenow', DEFAULT_REPLACE_NOW, type=bool))
             self.replaceNOWText.setText(settings.value('replacenowtext', DEFAULT_REPLACE_NOW_TEXT))
             # Load log level and set ComboBox
@@ -846,9 +828,6 @@ class Settings(QWidget, Ui_Settings):
             settings.setValue('slogan', self.Slogan.displayText())
             settings.setValue('stationcolor', self.getStationNameColor().name())
             settings.setValue('slogancolor', self.getSloganColor().name())
-            settings.setValue('updatecheck', self.checkBox_UpdateCheck.isChecked())
-            settings.setValue('updatekey', self.updateKey.displayText())
-            settings.setValue('updateincludebeta', self.checkBox_IncludeBetaVersions.isChecked())
             settings.setValue('replacenow', self.replaceNOW.isChecked())
             settings.setValue('replacenowtext', self.replaceNOWText.displayText())
             settings.setValue('loglevel', self.loglevelcombobox.currentText())
@@ -1001,131 +980,6 @@ class Settings(QWidget, Ui_Settings):
     def closeSettings(self):
         # close settings button pressed
         self.restoreSettingsFromConfig()
-
-    @staticmethod
-    def get_mac():
-        mac1 = getnode()
-        mac2 = getnode()
-        if mac1 == mac2:
-            mac = ":".join(textwrap.wrap(format(mac1, 'x').zfill(12).upper(), 2))
-        else:
-            logger.error("ERROR: Could not get a valid mac address")
-            mac = "00:00:00:00:00:00"
-        return mac
-
-    def trigger_manual_check_for_updates(self):
-        logger.info("Manual update check triggered")
-        self.manual_update_check = True
-        self.check_for_updates()
-
-    def check_for_updates(self):
-        if self.checkBox_UpdateCheck.isChecked():
-            logger.info("Starting update check")
-            update_key = self.updateKey.displayText()
-            if len(update_key) == 50:
-                logger.debug(f"Update check parameters: version={versionString}, distribution={distributionString}, include_beta={self.checkBox_IncludeBetaVersions.isChecked()}")
-                data = QUrlQuery()
-                data.addQueryItem("update_key", update_key)
-                data.addQueryItem("product", "OnAirScreen")
-                data.addQueryItem("current_version", versionString)
-                data.addQueryItem("distribution", distributionString)
-                data.addQueryItem("mac", self.get_mac())
-                data.addQueryItem("include_beta", f'{self.checkBox_IncludeBetaVersions.isChecked()}')
-                req = QtNetwork.QNetworkRequest(QUrl(update_url))
-                req.setHeader(QtNetwork.QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/x-www-form-urlencoded")
-                logger.debug(f"Sending update check request to: {update_url}")
-                self.nam_update_check = QtNetwork.QNetworkAccessManager()
-                self.nam_update_check.finished.connect(self.handle_update_check_response)
-                self.nam_update_check.post(req, data.toString().encode("UTF-8"))
-                logger.debug("Update check request sent successfully")
-            else:
-                logger.error(f"Update check failed: update key has wrong format (length: {len(update_key)}, expected: 50)")
-                self.error_dialog = QErrorMessage()
-                self.error_dialog.setWindowTitle("Update Check Error")
-                self.error_dialog.showMessage('Update key is in the wrong format!', 'UpdateKeyError')
-        else:
-            logger.debug("Update check skipped: update check is disabled in settings")
-
-    def handle_update_check_response(self, reply):
-        er = reply.error()
-        if er == QtNetwork.QNetworkReply.NetworkError.NoError:
-            logger.info("Update check response received successfully")
-            try:
-                bytes_string = reply.readAll()
-                reply_string = str(bytes_string, 'utf-8')
-                logger.debug(f"Update check response body: {reply_string}")
-                json_reply = json.loads(reply_string)
-                status = json_reply.get('Status', 'UNKNOWN')
-                logger.info(f"Update check response status: {status}")
-
-                if json_reply['Status'] == "UPDATE":
-                    logger.info(f"Update available: {json_reply.get('Message', 'No message')}")
-                    self.timer_message_box = TimerUpdateMessageBox(timeout=10, json_reply=json_reply)
-                    self.timer_message_box.exec()
-
-                if json_reply['Status'] == "OK" and self.manual_update_check:
-                    message = json_reply.get('Message', 'No message')
-                    logger.info(f"Update check successful (no update available): {message}")
-                    self.message_box = QMessageBox()
-                    
-                    # Set OnAirScreen app icon
-                    icon = QIcon()
-                    icon.addPixmap(QPixmap(":/oas_icon/images/oas_icon.png"), QIcon.Mode.Normal, QIcon.State.Off)
-                    self.message_box.setWindowIcon(icon)
-                    self.message_box.setIconPixmap(QPixmap(":/oas_icon/images/oas_icon.png"))
-                    
-                    self.message_box.setWindowTitle("OnAirScreen Update Check")
-                    self.message_box.setText("OnAirScreen Update Check")
-                    self.message_box.setInformativeText(f"{message}")
-                    self.message_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-                    self.message_box.show()
-                    self.manual_update_check = False
-
-                if json_reply['Status'] == "ERROR" and self.manual_update_check:
-                    message = json_reply.get('Message', 'No message')
-                    logger.error(f"Update check returned error: {message}")
-                    self.message_box = QMessageBox()
-                    
-                    # Set OnAirScreen app icon
-                    icon = QIcon()
-                    icon.addPixmap(QPixmap(":/oas_icon/images/oas_icon.png"), QIcon.Mode.Normal, QIcon.State.Off)
-                    self.message_box.setWindowIcon(icon)
-                    self.message_box.setIconPixmap(QPixmap(":/oas_icon/images/oas_icon.png"))
-                    
-                    self.message_box.setWindowTitle("OnAirScreen Update Check")
-                    self.message_box.setText("OnAirScreen Update Check")
-                    self.message_box.setInformativeText(f"{message}")
-                    self.message_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-                    self.message_box.show()
-                    self.manual_update_check = False
-
-                if json_reply['Status'] not in ["UPDATE", "OK", "ERROR"]:
-                    logger.warning(f"Update check returned unknown status: {status}")
-
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse update check response as JSON: {e}")
-                if self.manual_update_check:
-                    self.error_dialog = QErrorMessage()
-                    self.error_dialog.setWindowTitle("Update Check Error")
-                    self.error_dialog.showMessage('Invalid response from update server', 'UpdateCheckError')
-            except Exception as e:
-                if isinstance(e, (SettingsError, InvalidConfigValueError)):
-                    log_exception(logger, e)
-                else:
-                    error = SettingsError(f"Unexpected error processing update check response: {e}")
-                    log_exception(logger, error)
-                if self.manual_update_check:
-                    self.error_dialog = QErrorMessage()
-                    self.error_dialog.setWindowTitle("Update Check Error")
-                    self.error_dialog.showMessage(f'Error processing update check response: {str(e)}', 'UpdateCheckError')
-
-        else:
-            error_string = f"Error occurred: {er}, {reply.errorString()}"
-            logger.error(f"Update check network error: {error_string}")
-            if self.manual_update_check:
-                self.error_dialog = QErrorMessage()
-                self.error_dialog.setWindowTitle("Update Check Error")
-                self.error_dialog.showMessage(error_string, 'UpdateCheckError')
 
     def makeOWMTestCall(self):
         appid = self.owmAPIKey.displayText()
@@ -1613,10 +1467,6 @@ class Settings(QWidget, Ui_Settings):
         self.Slogan.setToolTip("Enter your station's slogan or tagline")
         self.StationNameColor.setToolTip("Click to select the color for the station name")
         self.SloganColor.setToolTip("Click to select the color for the slogan")
-        self.checkBox_UpdateCheck.setToolTip("Enable automatic update checking on startup")
-        self.updateKey.setToolTip("Enter your update key for automatic updates (if applicable)")
-        self.checkBox_IncludeBetaVersions.setToolTip("Include beta versions when checking for updates")
-        self.updateCheckNowButton.setToolTip("Manually check for updates now")
         self.replaceNOW.setToolTip("Replace the 'NOW' text with custom text after 10 seconds")
         self.replaceNOWText.setToolTip("Custom text to display after IP addresses are shown")
         
