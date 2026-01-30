@@ -403,7 +403,7 @@ class ClockWidget(QtWidgets.QWidget):
             dot_size = 1
             dot_offset = 3.5
             # AIDEV-NOTE: Visual centering offset (scaled for smaller digits)
-            digit_center_offset = 4
+            digit_center_offset = -4
 
             self.draw_digit(painter, digit_spacing * -3 + digit_center_offset, 0, int(hour_str[0:1]), dot_size, dot_offset)
             self.draw_digit(painter, digit_spacing * -2 + digit_center_offset, 0, int(hour_str[1:2]), dot_size, dot_offset)
@@ -421,9 +421,9 @@ class ClockWidget(QtWidgets.QWidget):
             digit_spacing = 28
             digit_spacing_y = 45
             seconds_offset_x = -3.5
-            # AIDEV-NOTE: Visual centering offset - digits appear left-shifted due to
+            # AIDEV-NOTE: Visual centering offset - digits appear right-shifted due to
             # slant and asymmetric digit patterns (e.g., "1" only uses right segments)
-            digit_center_offset = 6
+            digit_center_offset = -6
 
             self.draw_digit(painter, digit_spacing * -2 + digit_center_offset, 0, int(hour_str[0:1]))
             self.draw_digit(painter, digit_spacing * -1 + digit_center_offset, 0, int(hour_str[1:2]))
