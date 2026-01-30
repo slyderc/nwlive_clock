@@ -6,6 +6,7 @@ resources_rc.py
 onairscreen.ini
 .DS_Store
 venv/
+.venv/
 dist/
 build/
 .idea/

@@ -134,21 +134,14 @@ sudo apt install -y \
 ```bash
 sudo apt install -y \
     python3-pyqt6 \
-    python3-pyqt6.qtnetwork \
     python3-pip \
-    git
+    git \
+    pyqt6-dev-tools \
+    qt6-tools-dev \
+    python3-ntplib \
+    python3-websockets \
+    python3-paho-mqtt
 ```
-
-### Install Python Dependencies
-```bash
-pip3 install --break-system-packages \
-    ntplib \
-    websockets \
-    paho-mqtt \
-    requests
-```
-
-> **Note**: `--break-system-packages` is required on Bookworm due to PEP 668. These packages are safe to install system-wide for a dedicated kiosk.
 
 ---
 
@@ -162,7 +155,7 @@ sudo usermod -aG video,audio,input,tty onairscreen
 
 ### Clone the Repository
 ```bash
-sudo git clone https://github.com/saschaludwig/OnAirScreen.git /opt/onairscreen
+sudo git clone https://github.com/slyderc/nwlive_clock.git /opt/onairscreen
 sudo chown -R onairscreen:onairscreen /opt/onairscreen
 ```
 

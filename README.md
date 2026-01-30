@@ -47,22 +47,25 @@ Multi purpose "OnAir Lamp" solution targeted for use in professional broadcast e
  * OnAir Timer, Stopwatch, Countdown and more
 
 #### OnAirScreen Function Keys
-| Hotkeys                           | Function                |
-|-----------------------------------|-------------------------|
-| `Ctrl+F` or `F`                       | Toggle fullscreen       |
-| `Ctrl+Q` or `Q` or `Ctrl+C` or `ESC`      | Quit OnAirScreen        |
-| `Ctrl+S` or `Ctrl+,`                  | Open settings dialog    |
-| `Space` or `0`                        | Timer start/stop        |
-| `.` or `,` or `R`                       | Timer reset to 0:00     |
-| `1`                                 | LED1 on/off             |
-| `2`                                 | LED2 on/off             |
-| `3`                                 | LED3 on/off             |
-| `4`                                 | LED4 on/off             |
-| `M` or `/`                            | Mic Timer start/stop    |
-| `P` or `*`                            | Phone Timer start/stop  |
-| `Enter`                             | opens set timer dialog  |
+| Hotkeys                              | Function                     |
+|--------------------------------------|------------------------------|
+| `Ctrl+F` or `F`                      | Toggle fullscreen            |
+| `Ctrl+Q` or `Q` or `Ctrl+C` or `ESC` | Quit OnAirScreen             |
+| `Ctrl+S` or `Ctrl+,`                 | Open settings dialog         |
+| `Space`                              | Radio Timer (AIR3) start/stop|
+| `0` or `.` or `,` or `R`             | Radio Timer (AIR3) reset     |
+| `1`                                  | LED1 on/off                  |
+| `2`                                  | LED2 on/off                  |
+| `3`                                  | LED3 on/off                  |
+| `4`                                  | LED4 on/off                  |
+| `M` or `/`                           | Mic Timer (AIR1) start/stop  |
+| `P` or `*`                           | Phone Timer (AIR2) start/stop|
+| `S`                                  | Stream Timer (AIR4) start/stop|
+| `Alt+S`                              | Stream Timer (AIR4) reset    |
+| `I`                                  | Display IP addresses         |
+| `Enter`                              | Open set timer dialog        |
 
-On OSX use the `command ⌘` key instead of `Ctrl`
+On macOS use the `Cmd ⌘` key instead of `Ctrl`
 
 #### OnAirScreen API Commands
 
@@ -202,12 +205,16 @@ mosquitto_pub -h mqtt-broker -t onairscreen_a1b2c3/text/now/set -m "Current Song
 `CONF:LED[1-4]:timedflash=[False|True]`<br>
 `CONF:Clock:digital=[True|False]`<br>
 `CONF:Clock:showseconds=[True|False]`<br>
+`CONF:Clock:secondsinoneline=[True|False]`<br>
+`CONF:Clock:staticcolon=[True|False]`<br>
+`CONF:Clock:logoupper=[True|False]`<br>
 `CONF:Clock:digitalhourcolor=COLOR`<br>
 `CONF:Clock:digitalsecondcolor=COLOR`<br>
 `CONF:Clock:digitaldigitcolor=COLOR`<br>
 `CONF:Clock:logopath=PathToLogo`<br>
 `CONF:Network:udpport=PORT`<br>
-`CONF:Network:tcpport=PORT`<br>
+`CONF:Network:httpport=PORT`<br>
+`CONF:APPLY=TRUE` (apply settings after changes)<br>
 
 ## Error Handling
 
