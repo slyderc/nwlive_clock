@@ -525,7 +525,7 @@ class ClockWidget(QtWidgets.QWidget):
 
         # Draw ghost segments first (digit "8" = all segments)
         ghost_color = QtGui.QColor(self.digiDigitColor)
-        ghost_color.setAlpha(int(self.digiDigitColor.alpha() * 0.08))
+        ghost_color.setAlpha(int(self.digiDigitColor.alpha() * 0.05))
 
         painter.save()
         painter.setBrush(ghost_color)
