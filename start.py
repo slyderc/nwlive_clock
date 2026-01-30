@@ -1,13 +1,4 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.10"
-# dependencies = [
-#     "PyQt6>=6.0",
-#     "ntplib>=0.4",
-#     "websockets>=12.0",
-#     "paho-mqtt>=1.6.0",
-# ]
-# ///
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #############################################################################
 #
