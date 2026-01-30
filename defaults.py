@@ -124,11 +124,6 @@ DEFAULT_FONT_WEIGHT_BOLD: int = 1  # QFont.Weight.Bold
 DEFAULT_NTP_CHECK: bool = True
 DEFAULT_NTP_CHECK_SERVER: str = "pool.ntp.org"
 
-# Update Settings
-DEFAULT_UPDATE_CHECK: bool = False
-DEFAULT_UPDATE_KEY: str = ""
-DEFAULT_UPDATE_INCLUDE_BETA: bool = False
-
 # Logging Settings
 DEFAULT_LOG_LEVEL: str = "INFO"
 

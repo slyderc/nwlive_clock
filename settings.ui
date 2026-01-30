@@ -1009,67 +1009,6 @@
             </widget>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_16">
-             <item>
-              <layout class="QVBoxLayout" name="verticalLayout_20">
-               <item>
-                <widget class="QCheckBox" name="checkBox_UpdateCheck">
-                 <property name="text">
-                  <string>Check for updates</string>
-                 </property>
-                 <property name="checked">
-                  <bool>false</bool>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QCheckBox" name="checkBox_IncludeBetaVersions">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="text">
-                  <string>Include beta versions</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <widget class="QPushButton" name="updateCheckNowButton">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="text">
-                <string>Check now</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <widget class="QLineEdit" name="updateKey">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="placeholderText">
-              <string>paste your update key here</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_28">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>To obtain the latest updates of the precompiled (paid) versions, you need a valid update key.</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
             <spacer name="verticalSpacer_4">
              <property name="orientation">
               <enum>Qt::Orientation::Vertical</enum>
@@ -4552,10 +4491,6 @@ Public License instead of this License.  But first, please read
   <tabstop>DigitalHourColorButton</tabstop>
   <tabstop>DigitalSecondColorButton</tabstop>
   <tabstop>DigitalDigitColorButton</tabstop>
-  <tabstop>checkBox_UpdateCheck</tabstop>
-  <tabstop>checkBox_IncludeBetaVersions</tabstop>
-  <tabstop>updateCheckNowButton</tabstop>
-  <tabstop>updateKey</tabstop>
   <tabstop>showSeconds</tabstop>
   <tabstop>staticColon</tabstop>
   <tabstop>showTOH</tabstop>
@@ -4687,22 +4622,6 @@ Public License instead of this License.  But first, please read
     <hint type="destinationlabel">
      <x>107</x>
      <y>603</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBox_UpdateCheck</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>checkBox_IncludeBetaVersions</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>204</x>
-     <y>401</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>204</x>
-     <y>422</y>
     </hint>
    </hints>
   </connection>
@@ -5155,22 +5074,6 @@ Public License instead of this License.  But first, please read
    </hints>
   </connection>
   <connection>
-   <sender>checkBox_UpdateCheck</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>updateKey</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>207</x>
-     <y>401</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>278</x>
-     <y>461</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>LED3</sender>
    <signal>clicked(bool)</signal>
    <receiver>LED3Demo</receiver>
@@ -5199,22 +5102,6 @@ Public License instead of this License.  But first, please read
     <hint type="destinationlabel">
      <x>557</x>
      <y>598</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBox_UpdateCheck</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>updateCheckNowButton</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>203</x>
-     <y>401</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>379</x>
-     <y>419</y>
     </hint>
    </hints>
   </connection>
@@ -5327,22 +5214,6 @@ Public License instead of this License.  But first, please read
     <hint type="destinationlabel">
      <x>240</x>
      <y>567</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBox_UpdateCheck</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>label_28</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>207</x>
-     <y>401</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>278</x>
-     <y>503</y>
     </hint>
    </hints>
   </connection>
