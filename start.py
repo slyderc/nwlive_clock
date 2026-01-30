@@ -241,6 +241,9 @@ class MainScreen(QWidget, Ui_MainScreen):
 
         # NTP warning is already initialized in NTPManager
 
+        # Auto-start Stream timer (AIR4) on launch
+        self.start_air4()
+
     def quit_oas(self) -> None:
         """
         Quit the application with cleanup
@@ -457,7 +460,15 @@ class MainScreen(QWidget, Ui_MainScreen):
                 # Set label text
                 label_text = settings.value(config['label'], config['label_default'])
                 seconds = getattr(self, seconds_attr)
-                label_widget.setText(f"{label_text}\n{int(seconds/60)}:{seconds%60:02d}")
+                # AIDEV-NOTE: AIR4 (Stream) uses DD:HH:MM:SS format, others use MM:SS
+                if air_num == 4:
+                    days = seconds // 86400
+                    hours = (seconds % 86400) // 3600
+                    mins = (seconds % 3600) // 60
+                    secs = seconds % 60
+                    label_widget.setText(f"{label_text}\n{days:02d}:{hours:02d}:{mins:02d}:{secs:02d}")
+                else:
+                    label_widget.setText(f"{label_text}\n{int(seconds/60)}:{seconds%60:02d}")
                 
                 # Set status and start timer
                 setattr(self, status_attr, True)
@@ -549,7 +560,15 @@ class MainScreen(QWidget, Ui_MainScreen):
         with settings_group(settings, "Timers"):
             label_text = settings.value(config['label'], config['label_default'])
             seconds = getattr(self, seconds_attr)
-            label_widget.setText(f"{label_text}\n{int(seconds/60)}:{seconds%60:02d}")
+            # AIDEV-NOTE: AIR4 (Stream) uses DD:HH:MM:SS format, others use MM:SS
+            if air_num == 4:
+                days = seconds // 86400
+                hours = (seconds % 86400) // 3600
+                mins = (seconds % 3600) // 60
+                secs = seconds % 60
+                label_widget.setText(f"{label_text}\n{days:02d}:{hours:02d}:{mins:02d}:{secs:02d}")
+            else:
+                label_widget.setText(f"{label_text}\n{int(seconds/60)}:{seconds%60:02d}")
 
         # AIDEV-NOTE: Update AIR3 countdown color based on remaining time
         if air_num == 3 and 'mode_attr' in config:
@@ -977,7 +996,15 @@ class MainScreen(QWidget, Ui_MainScreen):
             label_text = settings.value(text_key, default_texts[air_num])
             label_widget = getattr(self, label_attr)
             seconds = getattr(self, seconds_attr)
-            label_widget.setText(f"{label_text}\n{int(seconds/60)}:{seconds%60:02d}")
+            # AIDEV-NOTE: AIR4 (Stream) uses DD:HH:MM:SS format, others use MM:SS
+            if air_num == 4:
+                days = seconds // 86400
+                hours = (seconds % 86400) // 3600
+                mins = (seconds % 3600) // 60
+                secs = seconds % 60
+                label_widget.setText(f"{label_text}\n{days:02d}:{hours:02d}:{mins:02d}:{secs:02d}")
+            else:
+                label_widget.setText(f"{label_text}\n{int(seconds/60)}:{seconds%60:02d}")
             
             # Log AIR reset event
             self.event_logger.log_air_reset(air_num, "manual")

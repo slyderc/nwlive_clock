@@ -582,10 +582,11 @@ class TestRadioTimerSet:
         mock_main_screen.Air3Seconds = 0
         mock_main_screen.radioTimerMode = 0
         mock_main_screen.AirLabel_3 = Mock()
-        
+        mock_main_screen.AirIcon_3 = Mock()
+
         # Call the actual method
         MainScreen.radio_timer_set(mock_main_screen, 120)
-        
+
         assert mock_main_screen.Air3Seconds == 120
         assert mock_main_screen.radioTimerMode == 1  # count down mode
         mock_main_screen.AirLabel_3.setText.assert_called_once_with("Timer\n2:00")
@@ -596,10 +597,11 @@ class TestRadioTimerSet:
         mock_main_screen.Air3Seconds = 0
         mock_main_screen.radioTimerMode = 1
         mock_main_screen.AirLabel_3 = Mock()
-        
+        mock_main_screen.AirIcon_3 = Mock()
+
         # Call the actual method
         MainScreen.radio_timer_set(mock_main_screen, 0)
-        
+
         assert mock_main_screen.Air3Seconds == 0
         assert mock_main_screen.radioTimerMode == 0  # count up mode
         mock_main_screen.AirLabel_3.setText.assert_called_once_with("Timer\n0:00")
@@ -610,10 +612,11 @@ class TestRadioTimerSet:
         mock_main_screen.Air3Seconds = 0
         mock_main_screen.radioTimerMode = 0
         mock_main_screen.AirLabel_3 = Mock()
-        
+        mock_main_screen.AirIcon_3 = Mock()
+
         # Call the actual method
         MainScreen.radio_timer_set(mock_main_screen, 125)
-        
+
         # Should format as 2:05 (125 seconds = 2 minutes 5 seconds)
         mock_main_screen.AirLabel_3.setText.assert_called_once_with("Timer\n2:05")
 
@@ -1027,9 +1030,10 @@ class TestUpdateAirSeconds:
         mock_main_screen.stop_air4 = Mock()
         
         MainScreen.update_air4_seconds(mock_main_screen)
-        
+
         assert mock_main_screen.Air4Seconds == 1
-        mock_main_screen.AirLabel_4.setText.assert_called_once_with("Stream\n0:01")
+        # AIDEV-NOTE: AIR4 uses DD:HH:MM:SS format
+        mock_main_screen.AirLabel_4.setText.assert_called_once_with("Stream\n00:00:00:01")
         mock_main_screen.stop_air4.assert_not_called()
     
     @patch('start.QSettings')
@@ -1191,10 +1195,11 @@ class TestResetAir4:
         mock_main_screen.AirLabel_4 = Mock()
         
         MainScreen.reset_air4(mock_main_screen)
-        
+
         assert mock_main_screen.Air4Seconds == 0
         mock_main_screen.timerAIR4.stop.assert_called_once()
-        mock_main_screen.AirLabel_4.setText.assert_called_once_with("Stream\n0:00")
+        # AIDEV-NOTE: AIR4 uses DD:HH:MM:SS format
+        mock_main_screen.AirLabel_4.setText.assert_called_once_with("Stream\n00:00:00:00")
         mock_main_screen.timerAIR4.start.assert_not_called()
     
     @patch('start.QSettings')
@@ -2063,11 +2068,12 @@ class TestSetAir4:
         mock_main_screen.update_air4_seconds = Mock()
         
         MainScreen.set_air4(mock_main_screen, True)
-        
+
         assert mock_main_screen.statusAIR4 is True
         mock_main_screen.AirLabel_4.setStyleSheet.assert_called()
         mock_main_screen.AirIcon_4.setStyleSheet.assert_called()
-        mock_main_screen.AirLabel_4.setText.assert_called_once_with("Stream\n0:00")
+        # AIDEV-NOTE: AIR4 uses DD:HH:MM:SS format
+        mock_main_screen.AirLabel_4.setText.assert_called_once_with("Stream\n00:00:00:00")
         mock_main_screen.timerAIR4.start.assert_called_once_with(1000)
         mock_main_screen.update_air4_seconds.assert_not_called()
     

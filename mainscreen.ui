@@ -387,7 +387,7 @@
        </property>
        <property name="minimumSize">
         <size>
-         <width>230</width>
+         <width>280</width>
          <height>120</height>
         </size>
        </property>
@@ -436,7 +436,7 @@ color: rgb(255, 255, 255);</string>
        </property>
        <property name="minimumSize">
         <size>
-         <width>230</width>
+         <width>280</width>
          <height>120</height>
         </size>
        </property>
@@ -485,7 +485,7 @@ color: rgb(255, 255, 255);</string>
        </property>
        <property name="minimumSize">
         <size>
-         <width>230</width>
+         <width>280</width>
          <height>120</height>
         </size>
        </property>
@@ -528,7 +528,7 @@ color: rgb(255, 255, 255);</string>
       <widget class="QLabel" name="buttonLED4">
        <property name="minimumSize">
         <size>
-         <width>230</width>
+         <width>280</width>
          <height>120</height>
         </size>
        </property>
@@ -665,7 +665,7 @@ color: rgb(255, 255, 255);</string>
      </property>
      <property name="maximumSize">
       <size>
-       <width>221</width>
+       <width>280</width>
        <height>16777215</height>
       </size>
      </property>
@@ -765,7 +765,7 @@ color: rgb(255, 255, 255);</string>
      </property>
      <property name="maximumSize">
       <size>
-       <width>221</width>
+       <width>280</width>
        <height>16777215</height>
       </size>
      </property>
@@ -883,7 +883,7 @@ color: rgb(255, 255, 255);</string>
      </property>
      <property name="maximumSize">
       <size>
-       <width>221</width>
+       <width>280</width>
        <height>16777215</height>
       </size>
      </property>
@@ -983,7 +983,7 @@ color: rgb(255, 255, 255);</string>
      </property>
      <property name="maximumSize">
       <size>
-       <width>221</width>
+       <width>280</width>
        <height>16777215</height>
       </size>
      </property>
@@ -1084,7 +1084,13 @@ color: rgb(255, 255, 255);</string>
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>135</height>
+       <height>170</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>280</width>
+       <height>16777215</height>
       </size>
      </property>
     </widget>
