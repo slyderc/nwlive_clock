@@ -485,11 +485,11 @@ class ClockWidget(QtWidgets.QWidget):
 
             if (self.showSeconds and not self.one_line_time) or self.logo_upper:
                 # logo position and width when showing seconds
-                paint_x = 0
+                paint_x = 2  # AIDEV-TODO: slight offset to compensate for digit slant visual effect
                 paint_y = -50
             else:
                 # logo position and width without seconds
-                paint_x = 0
+                paint_x = 2  # AIDEV-TODO: slight offset to compensate for digit slant visual effect
                 paint_y = 50
 
             if image_w > image_h:
