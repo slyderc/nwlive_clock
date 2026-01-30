@@ -117,29 +117,7 @@ class TestOASSettings:
 
 class TestSettingsHelperFunctions:
     """Tests for helper functions of the Settings class"""
-    
-    def test_get_mac_format(self):
-        """Test that get_mac returns a MAC address in the correct format"""
-        mac = Settings.get_mac()
-        # MAC address should be in format XX:XX:XX:XX:XX:XX
-        assert isinstance(mac, str)
-        assert len(mac) == 17  # 6 hex pairs + 5 colons
-        assert mac.count(":") == 5
-        # All characters should be hex characters or colons
-        parts = mac.split(":")
-        assert len(parts) == 6
-        for part in parts:
-            assert len(part) == 2
-            assert all(c in "0123456789ABCDEF" for c in part)
-    
-    def test_get_mac_consistency(self):
-        """Test that get_mac returns consistent values"""
-        mac1 = Settings.get_mac()
-        mac2 = Settings.get_mac()
-        # MAC address should be consistent (unless there's a problem)
-        # In this case it should be equal since getnode() is called twice
-        assert mac1 == mac2 or mac1 == "00:00:00:00:00:00"
-    
+
     def test_getColorFromName_valid_color(self):
         """Test that getColorFromName correctly converts valid color names"""
         # Create a Settings instance for the test

@@ -48,7 +48,7 @@ from PyQt6.QtWidgets import QApplication, QWidget, QDialog, QLineEdit, QVBoxLayo
 # Import resources FIRST to register them with Qt before UI files are loaded
 import resources_rc  # noqa: F401
 from mainscreen import Ui_MainScreen
-from settings_functions import Settings, versionString, distributionString
+from settings_functions import Settings, versionString
 from command_handler import CommandHandler
 from network import UdpServer, HttpDaemon, WebSocketDaemon
 from timer_manager import TimerManager
@@ -240,9 +240,6 @@ class MainScreen(QWidget, Ui_MainScreen):
         self.display_all_hostaddresses()
 
         # NTP warning is already initialized in NTPManager
-
-        # do initial update check
-        self.settings.sigCheckForUpdate.emit()
 
     def quit_oas(self) -> None:
         """
