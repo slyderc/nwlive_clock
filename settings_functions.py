@@ -747,7 +747,7 @@ class Settings(QWidget, Ui_Settings):
             self.enableAIR4.setChecked(settings.value('TimerAIR4Enabled', DEFAULT_TIMER_AIR_ENABLED, type=bool))
             self.AIR1Text.setText(settings.value('TimerAIR1Text', DEFAULT_TIMER_AIR_TEXTS.get(1, 'Mic')))
             self.AIR2Text.setText(settings.value('TimerAIR2Text', DEFAULT_TIMER_AIR_TEXTS.get(2, 'Phone')))
-            self.AIR3Text.setText(settings.value('TimerAIR3Text', DEFAULT_TIMER_AIR_TEXTS.get(3, 'Timer')))
+            self.AIR3Text.setText(settings.value('TimerAIR3Text', DEFAULT_TIMER_AIR_TEXTS.get(3, 'Track')))
             self.AIR4Text.setText(settings.value('TimerAIR4Text', DEFAULT_TIMER_AIR_TEXTS.get(4, 'Stream')))
             self.setAIR1BGColor(self.getColorFromName(settings.value('AIR1activebgcolor', DEFAULT_TIMER_AIR_ACTIVE_BG_COLOR)))
             self.setAIR1FGColor(self.getColorFromName(settings.value('AIR1activetextcolor', DEFAULT_TIMER_AIR_ACTIVE_TEXT_COLOR)))

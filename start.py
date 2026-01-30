@@ -394,7 +394,7 @@ class MainScreen(QWidget, Ui_MainScreen):
             },
             3: {
                 'label': 'TimerAIR3Text',
-                'label_default': 'Timer',
+                'label_default': 'Track',
                 'icon_key': 'air3iconpath',
                 'icon_default': ':/timer_icon/images/timer_icon.png',
                 'active_text_color': 'AIR3activetextcolor',
@@ -519,7 +519,7 @@ class MainScreen(QWidget, Ui_MainScreen):
         air_configs = {
             1: {'label': 'TimerAIR1Text', 'label_default': 'Mic', 'seconds_attr': 'Air1Seconds', 'label_widget': 'AirLabel_1'},
             2: {'label': 'TimerAIR2Text', 'label_default': 'Phone', 'seconds_attr': 'Air2Seconds', 'label_widget': 'AirLabel_2'},
-            3: {'label': 'TimerAIR3Text', 'label_default': 'Timer', 'seconds_attr': 'Air3Seconds', 'label_widget': 'AirLabel_3', 'mode_attr': 'radioTimerMode'},
+            3: {'label': 'TimerAIR3Text', 'label_default': 'Track', 'seconds_attr': 'Air3Seconds', 'label_widget': 'AirLabel_3', 'mode_attr': 'radioTimerMode'},
             4: {'label': 'TimerAIR4Text', 'label_default': 'Stream', 'seconds_attr': 'Air4Seconds', 'label_widget': 'AirLabel_4', 'mode_attr': 'streamTimerMode'}
         }
         
@@ -967,7 +967,7 @@ class MainScreen(QWidget, Ui_MainScreen):
             status_attr = f'statusAIR{air_num}'
             label_attr = f'AirLabel_{air_num}'
             
-            default_texts = {3: 'Timer', 4: 'Stream'}
+            default_texts = {3: 'Track', 4: 'Stream'}
             text_key = f'TimerAIR{air_num}Text'
             
             timer = getattr(self, timer_attr)

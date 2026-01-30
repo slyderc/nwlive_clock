@@ -87,7 +87,7 @@ DEFAULT_TIMER_AIR_ENABLED: bool = True
 DEFAULT_TIMER_AIR_TEXTS: Dict[int, str] = {
     1: "Mic",
     2: "Phone",
-    3: "Timer",
+    3: "Track",
     4: "Stream"
 }
 DEFAULT_TIMER_AIR_ACTIVE_TEXT_COLOR: str = "#FFFFFF"
