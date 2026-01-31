@@ -16,3 +16,6 @@ distribution.py
 .vscode/
 IMPROVEMENTS.md
 DOKUWIKI/
+
+# Claude Code local settings
+.claude/settings.local.json
