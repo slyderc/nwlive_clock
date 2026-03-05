@@ -140,7 +140,7 @@ DEFAULT_WEATHER_LANGUAGE: str = "English"  # Display name, not language code
 DEFAULT_WEATHER_UNIT: str = "Fahrenheit"  # Display name, not unit code
 
 # Stream Monitor Settings
-DEFAULT_STREAM_MONITOR_ENABLED: bool = True
+DEFAULT_STREAM_MONITOR_ENABLED: bool = False
 DEFAULT_STREAM_MONITOR_URL: str = "http://zipstream.climate.local/play.m3u"
 DEFAULT_STREAM_MONITOR_OFFLINE_THRESHOLD: int = 10  # Seconds without data before declaring offline
 DEFAULT_STREAM_MONITOR_RECONNECT_DELAY: int = 5  # Seconds between reconnect attempts
