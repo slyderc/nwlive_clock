@@ -149,9 +149,8 @@ class TimeFormatter:
     @staticmethod
     def _format_time_english(hour: int, minute: int, remain_min: int, is_am_pm: bool) -> str:
         """Format time in English text clock style"""
-        # Always use 12-hour format
-        if hour > 12:
-            hour -= 12
+        # Always use 12-hour format (0 and 12 both read as 12)
+        hour = hour % 12 or 12
 
         if minute == 0:
             return f"It's {hour} o'clock"
@@ -160,7 +159,7 @@ class TimeFormatter:
         elif minute == 30:
             return f"It's half-past {hour}"
         elif minute == 45:
-            return f"It's a quarter to {hour + 1}"
+            return f"It's a quarter to {1 if hour == 12 else hour + 1}"
         elif (0 < minute < 15) or (16 <= minute <= 29):
             return f"It's {minute} minute{'s' if minute > 1 else ''} past {hour}"
         elif (31 <= minute <= 44) or (46 <= minute <= 59):
