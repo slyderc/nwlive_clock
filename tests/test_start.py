@@ -994,6 +994,7 @@ class TestUpdateAirSeconds:
         mock_main_screen.Air3Seconds = 5
         mock_main_screen.radioTimerMode = 1  # count down
         mock_main_screen.AirLabel_3 = Mock()
+        mock_main_screen.AirIcon_3 = Mock()
         mock_main_screen.stop_air3 = Mock()
         
         MainScreen.update_air3_seconds(mock_main_screen)
@@ -1449,49 +1450,44 @@ class TestToggleFunctions:
     """Tests for toggle functions"""
     
     def test_toggle_led1_on_to_off(self, mock_main_screen):
-        """Test toggle_led1 turns off when currently on"""
-        mock_main_screen.statusLED1 = True
-        mock_main_screen.set_led1 = Mock()
-        
+        """Test toggle_led1 turns off when LED1on is True"""
+        mock_main_screen.LED1on = True
+
         MainScreen.toggle_led1(mock_main_screen)
-        
-        mock_main_screen.set_led1.assert_called_once_with(False)
-    
+
+        mock_main_screen.led_logic.assert_called_once_with(1, False)
+
     def test_toggle_led1_off_to_on(self, mock_main_screen):
-        """Test toggle_led1 turns on when currently off"""
-        mock_main_screen.statusLED1 = False
-        mock_main_screen.set_led1 = Mock()
-        
+        """Test toggle_led1 turns on when LED1on is False"""
+        mock_main_screen.LED1on = False
+
         MainScreen.toggle_led1(mock_main_screen)
-        
-        mock_main_screen.set_led1.assert_called_once_with(True)
-    
+
+        mock_main_screen.led_logic.assert_called_once_with(1, True)
+
     def test_toggle_led2(self, mock_main_screen):
         """Test toggle_led2 toggles LED2 state"""
-        mock_main_screen.statusLED2 = True
-        mock_main_screen.set_led2 = Mock()
-        
+        mock_main_screen.LED2on = True
+
         MainScreen.toggle_led2(mock_main_screen)
-        
-        mock_main_screen.set_led2.assert_called_once_with(False)
-    
+
+        mock_main_screen.led_logic.assert_called_once_with(2, False)
+
     def test_toggle_led3(self, mock_main_screen):
         """Test toggle_led3 toggles LED3 state"""
-        mock_main_screen.statusLED3 = False
-        mock_main_screen.set_led3 = Mock()
-        
+        mock_main_screen.LED3on = False
+
         MainScreen.toggle_led3(mock_main_screen)
-        
-        mock_main_screen.set_led3.assert_called_once_with(True)
-    
+
+        mock_main_screen.led_logic.assert_called_once_with(3, True)
+
     def test_toggle_led4(self, mock_main_screen):
         """Test toggle_led4 toggles LED4 state"""
-        mock_main_screen.statusLED4 = True
-        mock_main_screen.set_led4 = Mock()
-        
+        mock_main_screen.LED4on = True
+
         MainScreen.toggle_led4(mock_main_screen)
-        
-        mock_main_screen.set_led4.assert_called_once_with(False)
+
+        mock_main_screen.led_logic.assert_called_once_with(4, False)
     
     def test_toggle_air1_on_to_off(self, mock_main_screen):
         """Test toggle_air1 turns off when currently on"""
