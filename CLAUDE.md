@@ -18,7 +18,7 @@ make clean
 # Run the application
 python start.py
 python start.py --loglevel DEBUG    # With debug logging
-python start.py --fullscreen        # Fullscreen mode
+# Fullscreen has no CLI flag: toggle with F / Ctrl+F (persisted in settings, default on)
 
 # Run tests
 pytest                              # All tests

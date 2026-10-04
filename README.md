@@ -53,8 +53,8 @@ Multi purpose "OnAir Lamp" solution targeted for use in professional broadcast e
 | `Ctrl+F` or `F`                      | Toggle fullscreen            |
 | `Ctrl+Q` or `Q` or `Ctrl+C` or `ESC` | Quit OnAirScreen             |
 | `Ctrl+S` or `Ctrl+,`                 | Open settings dialog         |
-| `Space`                              | Radio Timer (AIR3) start/stop|
-| `0` or `.` or `,` or `R`             | Radio Timer (AIR3) reset     |
+| `Space` or `.` or `,`                | Radio Timer (AIR3) start/stop|
+| `0` or `R`                           | Radio Timer (AIR3) reset     |
 | `1`                                  | LED1 on/off                  |
 | `2`                                  | LED2 on/off                  |
 | `3`                                  | LED3 on/off                  |
@@ -180,8 +180,8 @@ OnAirScreen can automatically monitor an Icecast stream and control the AIR4 (ST
 Configure Stream Monitoring in Settings → Advanced Settings:
 - **Enable Stream Monitor**: Turn automatic monitoring on/off
 - **Stream URL**: Your Icecast stream URL (supports `.m3u` playlists or direct stream URLs)
-- **Poll Interval**: How often to check the stream (default: 3 seconds)
-- **Offline Threshold**: How long the stream must be offline before stopping AIR4 (default: 10 seconds)
+- **Reconnect Delay**: How long to wait before reconnecting after the connection drops (default: 5 seconds)
+- **Offline Threshold**: How long the stream may deliver no data before AIR4 stops (default: 10 seconds)
 
 **Behavior:**
 - When the stream comes online → AIR4 automatically starts with timer reset to `00:00:00:00`
@@ -193,11 +193,11 @@ Configure Stream Monitoring in Settings → Advanced Settings:
 **Example:**
 ```
 Stream URL: http://your-icecast-server.com/stream.m3u
-Poll Interval: 3 seconds
+Reconnect Delay: 5 seconds
 Offline Threshold: 10 seconds
 ```
 
-The monitor will parse `.m3u` playlists to extract the actual stream URL, then periodically check if the stream is delivering audio data.
+The monitor parses `.m3u` playlists to extract the actual stream URL, then holds a single persistent connection to it and watches for audio data. It does not poll.
 
 ##### API Commands
 
@@ -241,8 +241,7 @@ The monitor will parse `.m3u` playlists to extract the actual stream URL, then p
 `CONF:Clock:digitaldigitcolor=COLOR`<br>
 `CONF:Clock:logopath=PathToLogo`<br>
 `CONF:Network:udpport=PORT`<br>
-`CONF:Network:httpport=PORT`<br>
-`CONF:APPLY=TRUE` (apply settings after changes)<br>
+`CONF:CONF:APPLY=TRUE` (apply settings after changes)<br>
 
 ## Error Handling
 
